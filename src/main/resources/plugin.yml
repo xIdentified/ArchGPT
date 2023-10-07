@@ -1,0 +1,17 @@
+name: ArchGPT
+author: xIdentified
+version: '${project.version}'
+main: me.xidentified.archgpt.ArchGPT
+api-version: '1.20'
+depend:
+  - Citizens
+commands:
+  npcreports:
+    description: Manage and view NPC message reports.
+    usage: /<command>
+  reportnpcmessage:
+    description: Reports an NPC message
+    usage: /<command>
+  selectreporttype:
+    description: Select a type for the report.
+    usage: /<command> <type>
