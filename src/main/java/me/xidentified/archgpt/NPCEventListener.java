@@ -7,6 +7,8 @@ import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Location;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -53,7 +55,7 @@ public class NPCEventListener implements Listener {
         }
     }
 
-    // Deprecated listener for player chat - to stop old chat plugins from interfering
+    // Deprecated listener for player chat to support old chat plugins
     @EventHandler(priority = EventPriority.LOWEST)
     public void deprecatedOnPlayerChat(AsyncPlayerChatEvent event) {
         synchronized (conversationManager.npcChatStatesCache) {
@@ -106,20 +108,34 @@ public class NPCEventListener implements Listener {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
 
-        // If the player is already in an active conversation, handle that
         if (this.plugin.getActiveConversations().containsKey(playerUUID)) {
             NPC npc = conversationManager.playerNPCMap.get(playerUUID);
-            double distance = player.getLocation().distance(npc.getEntity().getLocation());
-            if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
-                conversationManager.endConversation(playerUUID);
-                player.sendMessage(Component.text("Conversation ended because you walked away.", NamedTextColor.YELLOW));
-                return;
+
+            if (npc != null && npc.isSpawned()) {
+                Entity npcEntity = npc.getEntity();
+
+                // Check if player changed worlds
+                if (!npcEntity.getWorld().equals(player.getWorld())) {
+                    // End conversation if player is in a different world
+                    conversationManager.endConversation(playerUUID);
+                    player.sendMessage(Component.text("Conversation ended because you changed worlds.", NamedTextColor.YELLOW));
+                    return; // Skip further processing since conversation has ended
+                }
+
+                // Check if player strayed too far
+                if (npcEntity.getWorld().equals(player.getWorld())) {
+                    double distance = player.getLocation().distance(npcEntity.getLocation());
+                    if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
+                        conversationManager.endConversation(playerUUID);
+                        player.sendMessage(Component.text("Conversation ended because you walked away.", NamedTextColor.YELLOW));
+                    }
+                }
             }
         }
 
         // If not in conversation, check if any NPC wants to greet the player
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
-            if (conversationManager.isInLineOfSight(npc, player) && conversationManager.canComment(npc)) {
+            if (npc.isSpawned() && conversationManager.isInLineOfSight(npc, player) && conversationManager.canComment(npc)) {
                 String prompt = plugin.getConfig().getString("npcs." + npc.getName());
                 if (prompt != null && !prompt.isEmpty()) {
                     // Modify the prompt to specify a greeting context
@@ -139,6 +155,5 @@ public class NPCEventListener implements Listener {
             }
         }
     }
-
 
 }

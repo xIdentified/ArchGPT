@@ -1,6 +1,7 @@
 package me.xidentified.archgpt;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
+import lombok.Getter;
 import me.xidentified.archgpt.reports.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
@@ -31,17 +32,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class NPCConversationManager {
 
     private final ArchGPT plugin;
-    private final ArchGPTConfig configHandler;
-    private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
+    //Getter methods for the NPCEventListener
+    @Getter private final ArchGPTConfig configHandler;
+    @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
     private final Map<UUID, AtomicInteger> conversationTokenCounters; //Ensures conversation doesn't go over token limit
-    private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
+    @Getter private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
     protected final Map<UUID, Long> npcCommentCooldown = new HashMap<>();
     protected final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     protected final Map<UUID, List<Component>> npcChatStatesCache;
     protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
 
-    // Configuration values that will be loaded once
-    private FileConfiguration config;
     private ConfigurationSection npcSection;
     private int maxResponseLength;
 
@@ -57,7 +57,8 @@ public class NPCConversationManager {
     }
 
     private void loadConfigurations() {
-        config = plugin.getConfig();
+        // Configuration values that will be loaded once
+        FileConfiguration config = plugin.getConfig();
         npcSection = config.getConfigurationSection("npcs");
         maxResponseLength = configHandler.getMaxResponseLength();
     }
@@ -140,8 +141,7 @@ public class NPCConversationManager {
 
 
     public boolean isInLineOfSight(NPC npc, Player player) {
-        // Check if the NPC's entity is null
-        if (npc.getEntity() == null) {
+        if (!npc.isSpawned() || !npc.getEntity().getWorld().equals(player.getWorld())) {
             return false;
         }
 
@@ -355,19 +355,6 @@ public class NPCConversationManager {
         }
 
         return NamedTextColor.WHITE; // Default color if the code is invalid
-    }
-
-    //Getter methods for the NPCEventListener
-    public ArchGPTConfig getConfigHandler() {
-        return this.configHandler;
-    }
-
-    public ConversationTimeoutManager getConversationTimeoutManager() {
-        return this.conversationTimeoutManager;
-    }
-
-    public ChatRequestHandler getChatRequestHandler() {
-        return this.chatRequestHandler;
     }
 
 }

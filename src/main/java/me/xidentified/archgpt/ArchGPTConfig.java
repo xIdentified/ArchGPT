@@ -1,27 +1,31 @@
 package me.xidentified.archgpt;
 
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@Slf4j
+@Getter
 public class ArchGPTConfig {
     private final Logger logger;
     private final JavaPlugin plugin;
-    private boolean debugMode;
+    @Getter private boolean debugMode;
     private double maxApiCallsPerSecond;
-    private long npcChatTimeoutMillis;
-    private String defaultPrompt;
-    private String apiKey;
-    private String chatGptEngine;
-    private String playerMessageColor;
-    private String npcNameColor;
-    private String playerNameColor;
-    private String npcMessageColor;
-    private int minCharLength;
-    private int maxResponseLength;
-    private long chatCooldownMillis;
+    @Getter private long npcChatTimeoutMillis;
+    @Getter private String defaultPrompt;
+    @Getter private String apiKey;
+    @Getter private String chatGptEngine;
+    @Getter private String playerMessageColor;
+    @Getter private String npcNameColor;
+    @Getter private String playerNameColor;
+    @Getter private String npcMessageColor;
+    @Getter private int minCharLength;
+    @Getter private int maxResponseLength;
+    @Getter private long chatCooldownMillis;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -68,52 +72,6 @@ public class ArchGPTConfig {
         FileConfiguration config = plugin.getConfig();
         // Assuming you have a configuration section called 'npcs' that lists all NPCs
         return config.getConfigurationSection("npcs").contains(npcName);
-    }
-
-    public boolean isDebugMode() {
-        return debugMode;
-    }
-
-    public long getNpcChatTimeoutMillis() {
-        return npcChatTimeoutMillis;
-    }
-
-    public String getDefaultPrompt() {
-        return defaultPrompt;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public int getMaxResponseLength() {
-        return maxResponseLength;
-    }
-
-    public String getChatGptEngine() {
-        return chatGptEngine;
-    }
-
-    public int getMinCharLength() {
-        return minCharLength;
-    }
-
-    public long getChatCooldownMillis() { return chatCooldownMillis; }
-
-    public String getNpcNameColor() {
-        return npcNameColor;
-    }
-
-    public String getPlayerNameColor() {
-        return playerNameColor;
-    }
-
-    public String getNpcMessageColor() {
-        return npcMessageColor;
-    }
-
-    public String getPlayerMessageColor() {
-        return playerMessageColor;
     }
 
     public void printConfigToConsole() {
