@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import me.xidentified.archgpt.listeners.NPCEventListener;
 import me.xidentified.archgpt.reports.*;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.*;
@@ -54,6 +55,10 @@ public class ArchGPT extends JavaPlugin {
             // Set the logger level based on debugMode
             Level loggerLevel = configHandler.isDebugMode() ? Level.INFO : Level.WARNING;
             getLogger().setLevel(loggerLevel);
+
+            // Register bStats
+            int pluginId = 20587;
+            Metrics metrics = new Metrics(this, pluginId);
 
             // Notify the user that the plugin is enabled
             configHandler.printConfigToConsole();
