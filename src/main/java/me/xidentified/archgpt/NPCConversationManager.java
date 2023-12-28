@@ -12,7 +12,7 @@ import net.kyori.adventure.text.format.TextColor;
 import com.google.gson.JsonObject;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
@@ -37,9 +37,9 @@ public class NPCConversationManager {
     @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
     private final Map<UUID, AtomicInteger> conversationTokenCounters; //Ensures conversation doesn't go over token limit
     @Getter private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
-    protected final Map<UUID, Long> npcCommentCooldown = new HashMap<>();
-    protected final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
-    protected final Map<UUID, List<Component>> npcChatStatesCache;
+    public final Map<UUID, Long> npcCommentCooldown = new HashMap<>();
+    public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
+    public final Map<UUID, List<Component>> npcChatStatesCache;
     protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
 
     private ConfigurationSection npcSection;

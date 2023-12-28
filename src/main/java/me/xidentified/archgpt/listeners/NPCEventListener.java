@@ -1,13 +1,13 @@
-package me.xidentified.archgpt;
+package me.xidentified.archgpt.listeners;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
+import me.xidentified.archgpt.*;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,6 +18,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 
 import java.util.*;
 
+// Anything in this class applies to NPCs regardless of server type
 public class NPCEventListener implements Listener {
 
     private final ArchGPT plugin;
@@ -55,20 +56,6 @@ public class NPCEventListener implements Listener {
         }
     }
 
-    // Deprecated listener for player chat to support old chat plugins
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void deprecatedOnPlayerChat(AsyncPlayerChatEvent event) {
-        synchronized (conversationManager.npcChatStatesCache) {
-            Player player = event.getPlayer();
-            UUID playerUUID = player.getUniqueId();
-
-            //Check if player is already in conversation
-            if (conversationManager.isInActiveConversation(playerUUID)) {
-                event.setCancelled(true);
-            }
-        }
-    }
-
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerChat(AsyncChatEvent event) {
         synchronized (conversationManager.npcChatStatesCache) {
@@ -99,6 +86,19 @@ public class NPCEventListener implements Listener {
 
             // Process the player's message
             conversationManager.processPlayerMessage(player, playerUUID, playerMessageComponent, hologramManager);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void deprecatedOnPlayerChat(AsyncPlayerChatEvent event) {
+        synchronized (conversationManager.npcChatStatesCache) {
+            Player player = event.getPlayer();
+            UUID playerUUID = player.getUniqueId();
+
+            //Check if player is already in conversation
+            if (conversationManager.isInActiveConversation(playerUUID)) {
+                event.setCancelled(true);
+            }
         }
     }
 

@@ -3,9 +3,12 @@ package me.xidentified.archgpt;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import me.xidentified.archgpt.utils.LocaleUtils;
+import me.xidentified.archgpt.utils.TranslationService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -14,7 +17,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -67,7 +69,7 @@ public class ChatRequestHandler {
                                 .get(0)
                                 .getAsJsonObject()
                                 .get("text")
-                                .getAsString();
+                                .getAsString().trim();
 
                         Component responseComponent = Component.text(assistantResponseText.trim());
 

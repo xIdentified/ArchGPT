@@ -1,6 +1,8 @@
 package me.xidentified.archgpt;
 
 import lombok.Getter;
+import lombok.NonNull;
+import me.xidentified.archgpt.listeners.NPCEventListener;
 import me.xidentified.archgpt.reports.*;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,6 +35,7 @@ public class ArchGPT extends JavaPlugin {
 
     @Override
     public void onEnable() {
+
         try {
             this.configHandler = new ArchGPTConfig(this);
             this.hologramManager = new HologramManager(this);
@@ -40,8 +43,8 @@ public class ArchGPT extends JavaPlugin {
 
             // Register the event listeners
             NPCConversationManager manager = new NPCConversationManager(this, new ArchGPTConfig(this));
-            getServer().getPluginManager().registerEvents(new NPCEventListener(this, manager, configHandler), this);
             getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
+            getServer().getPluginManager().registerEvents(new NPCEventListener(this, manager, configHandler), this);
 
             // Register commands
             this.getCommand("npcreports").setExecutor(new AdminReportCommandExecutor(this));
@@ -64,6 +67,7 @@ public class ArchGPT extends JavaPlugin {
 
     @Override
     public void onDisable() {
+
         // Close connection
         if (this.reportManager != null) {
             this.reportManager.closeResources();
