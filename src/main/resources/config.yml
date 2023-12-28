@@ -3,30 +3,37 @@ debug_mode: false
 
 api_key: "YOUR_OPENAI_API_KEY"
 chatgpt_engine: "text-davinci-003" # The OpenAI GPT engine to use
-max_response_length: 200 #Maximum length of response from ChatGPT (in tokens)
+max_response_length: 200 # Maximum length of response from ChatGPT (in tokens)
 max_api_calls_per_second: 5
+translate_text: false # Translate text to the player locale
 
-#Time (in milliseconds) before the conversation times out
+# Time (in milliseconds) before the conversation times out
 response_timeout: 60000
-#Minimum characters in outgoing player message
+# Minimum characters in outgoing player message
 min_char_length: 10
-#Cooldown duration in milliseconds (e.g., 3000 milliseconds = 3 seconds)
+# Cooldown duration in milliseconds (e.g., 3000 milliseconds = 3 seconds)
 chat_cooldown: 3000
 
-#The default prompt your ChatGPT responses will be based off of. What's set here should apply to all NPCs.
-#Useful for setting base rules like, "don't stray off-topic" or "you are an NPC in Minecraft"
+# The default prompt your ChatGPT responses will be based off of. What's set here should apply to all NPCs.
+# Useful for setting base rules like, "don't stray off-topic" or "you are an NPC in Minecraft"
 default_prompt: "You are an NPC in Minecraft: "
 
 # Replace 'npc_name' with the name of the NPC (as used in Citizens) and place your prompt in quotes.
 npcs:
   npc_name: "This is an example prompt for the NPC."
 
-#You can name colors using default codes like "&6" or any valid hex color like "#FFAA00"
+# You can name colors using default codes like "&6" or any valid hex color like "#FFAA00"
 chat_colors:
   npc_name: "#37B5FC"
   player_name: "&a"
   npc_message: "&7"
   player_message: "&f"
 
-#DO NOT EDIT
-version: 1
+storage:
+  type: "yaml" # Options are "yaml", "sqlite", "mysql"
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "archgpt_db"
+    username: "user"
+    password: "password"

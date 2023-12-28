@@ -15,6 +15,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.apache.commons.text.StringEscapeUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,14 +44,7 @@ public class ChatRequestHandler {
 
     public CompletableFuture<Object> processChatGPTRequest(JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<Component> conversationState) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            String apiKey = plugin.getConfigHandler().getApiKey();
-            String chatGptEngine = plugin.getConfigHandler().getChatGptEngine();
-            String chatGptEndpoint = "https://api.openai.com/v1/engines/" + chatGptEngine + "/completions";
-            HttpPost httpPost = new HttpPost(chatGptEndpoint);
-
-            // Set the request headers
-            httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
-            httpPost.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+            HttpPost httpPost = getHttpPost();
             plugin.debugLog("Setting Content-Type to application/json");
 
             // Convert the JsonObject to a JSON string
@@ -116,6 +110,19 @@ public class ChatRequestHandler {
             }
             return handleAPIErrorResponse(requestType);
         }
+    }
+
+    @NotNull
+    private HttpPost getHttpPost() {
+        String apiKey = plugin.getConfigHandler().getApiKey();
+        String chatGptEngine = plugin.getConfigHandler().getChatGptEngine();
+        String chatGptEndpoint = "https://api.openai.com/v1/engines/" + chatGptEngine + "/completions";
+        HttpPost httpPost = new HttpPost(chatGptEndpoint);
+
+        // Set the request headers
+        httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
+        httpPost.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+        return httpPost;
     }
 
     private Component sanitizeAPIResponse(Component chatGptResponseComponent) {
