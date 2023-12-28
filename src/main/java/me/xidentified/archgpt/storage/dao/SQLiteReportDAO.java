@@ -80,7 +80,6 @@ public class SQLiteReportDAO implements ReportDAO {
 
             while (rs.next()) {
                 int id = rs.getInt("id");
-                System.out.println("Report ID: " + id); // Log the report ID
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                 LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"), formatter);
                 reports.add(new Report(
@@ -117,22 +116,6 @@ public class SQLiteReportDAO implements ReportDAO {
 
         } catch (SQLException e) {
             System.out.println(e.getMessage());
-        }
-    }
-
-    public boolean reportExists(int reportId) {
-        String sql = "SELECT id FROM reports WHERE id = ?";
-
-        try (Connection conn = this.connect();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, reportId);
-            ResultSet rs = pstmt.executeQuery();
-            return rs.next();
-
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-            return false;
         }
     }
 

@@ -24,24 +24,38 @@ import java.util.List;
 import java.util.Map;
 
 public class ReportGUI implements InventoryHolder, Listener {
-
     private final ArchGPT plugin;
     private final Inventory inventory;
     @Getter private Map<Integer, Integer> slotToReportIdMap = new HashMap<>();
+    private int currentPage = 0;
+    private int totalPages;
 
     public ReportGUI(ArchGPT plugin) {
         this.plugin = plugin;
-        int size = Math.min(54, (plugin.getReportManager().listReports().size() / 9 + 1) * 9);
+        List<Report> reports = plugin.getReportManager().listReports();
+        int slotsPerPage = 45; // Assuming the last row is reserved for navigation
+        this.totalPages = (int) Math.ceil((double) reports.size() / slotsPerPage);
+        int size = Math.min(54, (slotsPerPage + 9)); // 54 is max inventory size with 9 slots for navigation
         this.inventory = Bukkit.createInventory(this, size, Component.text("Reports").decoration(TextDecoration.ITALIC, false));
     }
 
     public void openGUI(Player admin) {
         List<Report> reports = plugin.getReportManager().listReports();
+
+        if (reports.isEmpty()) {
+            admin.sendMessage(Component.text("There are no reports to display.", NamedTextColor.RED));
+            return;
+        }
+
+        int start = this.currentPage * 45;
+        int end = Math.min(start + 45, reports.size());
+
         this.inventory.clear();
         slotToReportIdMap.clear();
 
         int slot = 0;
-        for (Report report : reports) {
+        for (int i = start; i < end; i++) {
+            Report report = reports.get(i);
             ItemStack reportItem = new ItemStack(Material.WRITABLE_BOOK);
             ItemMeta meta = reportItem.getItemMeta();
 
@@ -62,13 +76,15 @@ public class ReportGUI implements InventoryHolder, Listener {
                 meta.lore(lore);
                 reportItem.setItemMeta(meta);
 
-                // Map the current slot to the report's ID
+                // Update the slotToReportIdMap for the current page
                 slotToReportIdMap.put(slot, report.getId());
                 slot++;
             }
 
             this.inventory.addItem(reportItem);
         }
+
+        addNavigationItems();
 
         admin.openInventory(this.inventory);
     }
@@ -80,19 +96,33 @@ public class ReportGUI implements InventoryHolder, Listener {
         event.setCancelled(true);
 
         ReportGUI reportGUI = (ReportGUI) event.getInventory().getHolder();
-        if (event.isShiftClick() && event.isRightClick()) {
-            int clickedSlot = event.getSlot();
+        int clickedSlot = event.getSlot();
 
-            // Get the report ID from the slotToReportIdMap
+        if (isNavigationSlot(clickedSlot)) {
+            handleNavigationClick(reportGUI, clickedSlot, (Player) event.getWhoClicked());
+        } else if (event.isShiftClick() && event.isRightClick()) {
+            // Handle report deletion
             Integer reportId = reportGUI.getSlotToReportIdMap().get(clickedSlot);
             if (reportId != null) {
                 plugin.getReportManager().deleteReport(reportId);
-                new ReportGUI(plugin).openGUI((Player) event.getWhoClicked());
+                reportGUI.openGUI((Player) event.getWhoClicked()); // Refresh the GUI
                 event.getWhoClicked().sendMessage(Component.text("Report successfully deleted.", NamedTextColor.YELLOW));
-            } else {
-                event.getWhoClicked().sendMessage(Component.text("No report found with id: " + clickedSlot, NamedTextColor.RED));
             }
         }
+    }
+
+    private boolean isNavigationSlot(int slot) {
+        // Assuming the last two slots are used for navigation (e.g., previous and next page)
+        return slot >= this.inventory.getSize() - 2;
+    }
+
+    private void handleNavigationClick(ReportGUI reportGUI, int clickedSlot, Player player) {
+        if (clickedSlot == this.inventory.getSize() - 2) { // Previous page button slot
+            reportGUI.currentPage = Math.max(0, reportGUI.currentPage - 1);
+        } else if (clickedSlot == this.inventory.getSize() - 1) { // Next page button slot
+            reportGUI.currentPage = Math.min(reportGUI.totalPages - 1, reportGUI.currentPage + 1);
+        }
+        reportGUI.openGUI(player);
     }
 
     private void addFormattedLore(List<Component> lore, String fieldName, String content) {
@@ -126,6 +156,26 @@ public class ReportGUI implements InventoryHolder, Listener {
                 .append(Component.text(fullContent, NamedTextColor.WHITE))
                 .decoration(TextDecoration.ITALIC, false);
         lore.add(remainingLine);
+    }
+
+    private void addNavigationItems() {
+        if (this.totalPages > 1) { // Add navigation items only if more than one page is needed
+            ItemStack prevPageItem = createNavigationItem(Material.ARROW, "Previous Page", NamedTextColor.GREEN);
+            ItemStack nextPageItem = createNavigationItem(Material.ARROW, "Next Page", NamedTextColor.GREEN);
+
+            this.inventory.setItem(this.inventory.getSize() - 2, prevPageItem); // Slot for previous page
+            this.inventory.setItem(this.inventory.getSize() - 1, nextPageItem); // Slot for next page
+        }
+    }
+
+    private ItemStack createNavigationItem(Material material, String name, NamedTextColor color) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.displayName(Component.text(name, color).decoration(TextDecoration.ITALIC, false));
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
     @Override
