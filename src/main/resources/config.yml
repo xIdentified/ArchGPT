@@ -30,10 +30,10 @@ chat_colors:
   player_message: "&f"
 
 storage:
-  type: "yaml" # Options are "yaml", "sqlite", "mysql"
+  type: 'yaml' # Options: yaml, sqlite, mysql
   mysql:
-    host: "localhost"
+    host: 'localhost'
     port: 3306
-    database: "archgpt_db"
-    username: "user"
-    password: "password"
+    database: 'archgpt'
+    username: 'root'
+    password: 'password'

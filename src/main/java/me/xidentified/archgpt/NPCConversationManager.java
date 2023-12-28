@@ -2,7 +2,7 @@ package me.xidentified.archgpt;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
-import me.xidentified.archgpt.reports.Report;
+import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -219,8 +219,8 @@ public class NPCConversationManager {
             if (npcLastMessage == null) {
                 npcLastMessage = "Unknown NPC Message";
             }
-
-            Report report = new Report(player.getName(), npc.getName(), reportType, feedback, npcLastMessage, LocalDateTime.now());
+            int newReportId = -1;
+            Report report = new Report(newReportId, player.getName(), npc.getName(), reportType, feedback, npcLastMessage, LocalDateTime.now());
             plugin.getReportManager().addReport(report);
             plugin.getReportManager().exitReportingState(playerUUID);
             player.sendMessage(Component.text("Thank you, your report has been submitted. Type 'cancel' to end the conversation.", NamedTextColor.GREEN));

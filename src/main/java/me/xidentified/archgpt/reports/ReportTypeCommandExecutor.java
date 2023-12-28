@@ -65,6 +65,9 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
             // Code for the /selectreporttype command
             String selectedType = args[0];
 
+            // Store the selected report type
+            plugin.getReportManager().setSelectedReportType(player.getUniqueId(), selectedType);
+
             // Remove the player from the report type selection state
             plugin.getReportManager().selectingReportTypePlayers.remove(player.getUniqueId());
 

@@ -1,7 +1,7 @@
 package me.xidentified.archgpt.storage.dao;
 
 
-import me.xidentified.archgpt.reports.Report;
+import me.xidentified.archgpt.storage.model.Report;
 
 import java.util.List;
 

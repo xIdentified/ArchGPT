@@ -41,7 +41,7 @@ public class ArchGPT extends JavaPlugin {
             // Register the event listeners
             NPCConversationManager manager = new NPCConversationManager(this, new ArchGPTConfig(this));
             getServer().getPluginManager().registerEvents(new NPCEventListener(this, manager, configHandler), this);
-            getServer().getPluginManager().registerEvents(new ReportGUIListener(this), this);
+            getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
 
             // Register commands
             this.getCommand("npcreports").setExecutor(new AdminReportCommandExecutor(this));
@@ -64,6 +64,11 @@ public class ArchGPT extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Close connection
+        if (this.reportManager != null) {
+            this.reportManager.closeResources();
+        }
+
         // Remove all holograms (armor stands) created by the plugin
         if (this.hologramManager != null) {
             this.hologramManager.removeAllHolograms();

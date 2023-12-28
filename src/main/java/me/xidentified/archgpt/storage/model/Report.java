@@ -1,21 +1,24 @@
-package me.xidentified.archgpt.reports;
+package me.xidentified.archgpt.storage.model;
 
 import lombok.Getter;
+import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
+@Getter
 public class Report {
-    @Getter private final String playerName;
-    @Getter private final String reportType; // e.g., Inappropriate, Off-topic, Other
-    @Getter private final String feedback;
-    @Getter private final String npcResponse;
+    private final int id; // Unique identifier for each report
+    private final String playerName;
+    private final String reportType; // e.g., Inappropriate, Off-topic, Other
+    private final String feedback;
+    private final String npcResponse;
     private final LocalDateTime timestamp;
-    @Getter private final String npcName;
+    private final String npcName;
 
-    public Report(String playerName, String npcName, String reportType, Component feedbackComponent, String npcResponse, LocalDateTime timestamp) {
+    public Report(int id, String playerName, String npcName, String reportType, Component feedbackComponent, String npcResponse, LocalDateTime timestamp) {
+        this.id = id;
         this.playerName = playerName;
         this.npcName = npcName;
         this.reportType = reportType;
@@ -31,8 +34,6 @@ public class Report {
 
     @Override
     public String toString() {
-        return "Report from " + playerName + " about NPC " + npcName + " on " + getFormattedTimestamp() + ": Type - " + reportType + ", Feedback - " + feedback + ", NPC Response - " + npcResponse;
+        return "Report ID: " + id + " - Report from " + playerName + " about NPC " + npcName + " on " + getFormattedTimestamp() + ": Type - " + reportType + ", Feedback - " + feedback + ", NPC Response - " + npcResponse;
     }
-
-
 }

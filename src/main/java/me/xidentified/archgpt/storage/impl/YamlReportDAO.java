@@ -1,7 +1,7 @@
 package me.xidentified.archgpt.storage.impl;
 
 import me.xidentified.archgpt.ArchGPT;
-import me.xidentified.archgpt.reports.Report;
+import me.xidentified.archgpt.storage.model.Report;
 import me.xidentified.archgpt.storage.dao.ReportDAO;
 import net.kyori.adventure.text.Component;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -15,15 +15,38 @@ import java.util.Set;
 
 public class YamlReportDAO implements ReportDAO {
     private final ArchGPT plugin;
-    private File reportFile;
+    private final File reportFile;
     private YamlConfiguration reportConfig;
     private final List<Report> reports = new ArrayList<>();
 
     public YamlReportDAO(File dataFolder, ArchGPT plugin) {
+        // Create storage directory if it doesn't exist
+        File storageFolder = new File(dataFolder, "storage");
+        if (!storageFolder.exists()) {
+            storageFolder.mkdirs();
+        }
+
+        // Initialize report file within the storage folder
+        this.reportFile = new File(storageFolder, "reports.yml");
         this.plugin = plugin;
-        reportFile = new File(dataFolder, "reports.yml");
+
+        // Setup report file and load existing reports
         setupReportFile();
         loadReports();
+    }
+
+    private void setupReportFile() {
+        if (!reportFile.exists()) {
+            try {
+                boolean fileCreated = reportFile.createNewFile();
+                if (!fileCreated) {
+                    plugin.getLogger().warning("Failed to create the reports.yml file!");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        reportConfig = YamlConfiguration.loadConfiguration(reportFile);
     }
 
     @Override
@@ -46,13 +69,13 @@ public class YamlReportDAO implements ReportDAO {
         }
     }
 
-    @Override
     public void loadReports() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         if(reportConfig.isConfigurationSection("reports")) {
             Set<String> keys = reportConfig.getConfigurationSection("reports").getKeys(false);
             if (keys != null) {
                 for (String key : keys) {
+                    int reportId = Integer.parseInt(key); // Parse the key as the report ID
                     String playerName = reportConfig.getString("reports." + key + ".playerName");
                     String npcName = reportConfig.getString("reports." + key + ".npcName");
                     String reportType = reportConfig.getString("reports." + key + ".reportType");
@@ -62,28 +85,13 @@ public class YamlReportDAO implements ReportDAO {
                     String timestampStr = reportConfig.getString("reports." + key + ".timestamp");
                     if (timestampStr != null) {
                         LocalDateTime timestamp = LocalDateTime.parse(timestampStr, formatter);
-                        reports.add(new Report(playerName, npcName, reportType, feedbackComponent, npcResponse, timestamp));
+                        reports.add(new Report(reportId, playerName, npcName, reportType, feedbackComponent, npcResponse, timestamp));
                     } else {
                         plugin.getLogger().warning("Failed to load report with key: " + key + " due to missing timestamp.");
                     }
                 }
             }
         }
-    }
-
-    private void setupReportFile() {
-        reportFile = new File(plugin.getDataFolder(), "reports.yml");
-        if (!reportFile.exists()) {
-            try {
-                boolean fileCreated = reportFile.createNewFile();
-                if (!fileCreated) {
-                    plugin.getLogger().warning("Failed to create the reports.yml file!");
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        reportConfig = YamlConfiguration.loadConfiguration(reportFile);
     }
 
     public void saveReports() {
