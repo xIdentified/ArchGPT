@@ -45,7 +45,7 @@ public class ArchGPT extends JavaPlugin {
 
             // Initialize TranslationService
             String libreTranslateAPIEndpoint = getConfig().getString("translation.libre_endpoint");
-            this.translationService = new TranslationService(libreTranslateAPIEndpoint);
+            this.translationService = new TranslationService(libreTranslateAPIEndpoint, this.getLogger());
 
             // Register the event listeners
             NPCConversationManager manager = new NPCConversationManager(this, translationService, configHandler);

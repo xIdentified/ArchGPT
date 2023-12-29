@@ -38,4 +38,6 @@ storage:
     password: 'password'
 
 translation:
+  use-player-client-locale: true  # Use player locale for plugin messages and ChatGPT response language
+  default-locale: "en"
   libre_endpoint: 'https://libretranslate.de'

@@ -10,7 +10,7 @@ public class ArchGPTConstants {
 
     public static final double MAX_DISTANCE_LINE_OF_SIGHT = 4.0;
 
-    public static final int MAX_CONVERSATION_STATE_SIZE = 10;
+    public static final int MAX_CONVERSATION_STATE_SIZE = 8;
 
     public static final int MAX_CHAT_LENGTH = 750;
 
