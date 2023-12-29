@@ -3,6 +3,7 @@ package me.xidentified.archgpt;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
 import me.xidentified.archgpt.storage.model.Report;
+import me.xidentified.archgpt.utils.TranslationService;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -32,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class NPCConversationManager {
 
     private final ArchGPT plugin;
+    private final TranslationService translationService;
     //Getter methods for the NPCEventListener
     @Getter private final ArchGPTConfig configHandler;
     @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
@@ -45,8 +47,9 @@ public class NPCConversationManager {
     private ConfigurationSection npcSection;
     private int maxResponseLength;
 
-    public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
+    public NPCConversationManager(ArchGPT plugin, TranslationService translationService, ArchGPTConfig configHandler) {
         this.plugin = plugin;
+        this.translationService = translationService;
         this.configHandler = configHandler;
         this.chatRequestHandler = new ChatRequestHandler(plugin);
         this.npcChatStatesCache = new ConcurrentHashMap<>();
@@ -124,7 +127,7 @@ public class NPCConversationManager {
         conversationTokenCounters.put(playerUUID, tokenCounter);
     }
 
-    public CompletableFuture<Component> getGreeting(Component prompt) {
+    public CompletableFuture<Component> getGreeting(Component prompt, Player player) {
         // Convert the prompt Component to a JSON string
         String promptText = PlainTextComponentSerializer.plainText().serialize(prompt);
 
@@ -135,7 +138,7 @@ public class NPCConversationManager {
 
         // Use the processChatGPTRequest method with RequestType.GREETING
         return getChatRequestHandler()
-                .processChatGPTRequest(requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
+                .processChatGPTRequest(player, requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
                 .thenApply(responseObject -> (Component) responseObject); // Cast the responseObject to Component
     }
 
@@ -295,7 +298,7 @@ public class NPCConversationManager {
         jsonRequest.addProperty("prompt", promptBuilder.toString());
         jsonRequest.addProperty("max_tokens", 150); // You can adjust this value as needed
 
-        CompletableFuture<Object> future = getChatRequestHandler().processChatGPTRequest(jsonRequest, ChatRequestHandler.RequestType.CONVERSATION, playerMessage, conversationState);
+        CompletableFuture<Object> future = getChatRequestHandler().processChatGPTRequest(player, jsonRequest, ChatRequestHandler.RequestType.CONVERSATION, playerMessage, conversationState);
 
         future.thenAccept(responseObject -> {
             synchronized (npcChatStatesCache) {

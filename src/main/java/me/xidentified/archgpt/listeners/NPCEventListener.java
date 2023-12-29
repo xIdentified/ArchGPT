@@ -144,7 +144,7 @@ public class NPCEventListener implements Listener {
                             .append(Component.text("A player approaches you. How do you greet them?"));
 
                     // Get the greeting for the NPC asynchronously
-                    conversationManager.getGreeting(promptComponent).thenAccept(greeting -> {
+                    conversationManager.getGreeting(promptComponent, player).thenAccept(greeting -> {
                         // Utilize the sendNPCMessage method to send the greeting
                         conversationManager.sendNPCMessage(player, playerUUID, npc.getName(), greeting);
 

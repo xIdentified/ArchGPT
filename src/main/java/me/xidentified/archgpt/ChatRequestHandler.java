@@ -4,7 +4,6 @@ package me.xidentified.archgpt;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.xidentified.archgpt.utils.LocaleUtils;
-import me.xidentified.archgpt.utils.TranslationService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
@@ -17,9 +16,11 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,7 +45,7 @@ public class ChatRequestHandler {
         CONVERSATION
     }
 
-    public CompletableFuture<Object> processChatGPTRequest(JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<Component> conversationState) {
+    public CompletableFuture<Object> processChatGPTRequest(Player player, JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<Component> conversationState) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost httpPost = getHttpPost();
             plugin.debugLog("Setting Content-Type to application/json");
@@ -53,14 +54,15 @@ public class ChatRequestHandler {
             String jsonRequest = requestBody.toString();
             plugin.debugLog("Request Body to ChatGPT API: " + jsonRequest);
 
-            // Set the request body
-            httpPost.setEntity(new StringEntity(jsonRequest));
+            // Set the request body with UTF-8 encoding
+            httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 if (response.getStatusLine().getStatusCode() == 200) {
                     HttpEntity responseEntity = response.getEntity();
                     if (responseEntity != null) {
-                        String jsonResponse = EntityUtils.toString(responseEntity);
+                        String jsonResponse = EntityUtils.toString(response.getEntity());
+                        plugin.getLogger().info("Translation API Response: " + jsonResponse);
 
                         // Parse the response JSON using the updated method
                         JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
@@ -70,6 +72,13 @@ public class ChatRequestHandler {
                                 .getAsJsonObject()
                                 .get("text")
                                 .getAsString().trim();
+
+                        // Translate response if the player's locale is different from the default language
+                        String playerLocale = LocaleUtils.getPlayerLocale(player);
+                        if (!playerLocale.equals("en_US")) { // TODO: Check for default lang in config
+                            String targetLang = playerLocale.substring(0, 2); // Extract language code (first two characters)
+                            assistantResponseText = plugin.getTranslationService().translateText(assistantResponseText, "en", targetLang);
+                        }
 
                         Component responseComponent = Component.text(assistantResponseText.trim());
 

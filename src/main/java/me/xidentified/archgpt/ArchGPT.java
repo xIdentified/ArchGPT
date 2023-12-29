@@ -1,9 +1,9 @@
 package me.xidentified.archgpt;
 
 import lombok.Getter;
-import lombok.NonNull;
 import me.xidentified.archgpt.listeners.NPCEventListener;
 import me.xidentified.archgpt.reports.*;
+import me.xidentified.archgpt.utils.TranslationService;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,6 +33,7 @@ public class ArchGPT extends JavaPlugin {
     // Managers
     private HologramManager hologramManager;
     private ReportManager reportManager;
+    private TranslationService translationService;
 
     @Override
     public void onEnable() {
@@ -42,14 +43,18 @@ public class ArchGPT extends JavaPlugin {
             this.hologramManager = new HologramManager(this);
             this.reportManager = new ReportManager(this);
 
+            // Initialize TranslationService
+            String libreTranslateAPIEndpoint = getConfig().getString("translation.libre_endpoint");
+            this.translationService = new TranslationService(libreTranslateAPIEndpoint);
+
             // Register the event listeners
-            NPCConversationManager manager = new NPCConversationManager(this, new ArchGPTConfig(this));
-            getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
+            NPCConversationManager manager = new NPCConversationManager(this, translationService, configHandler);
             getServer().getPluginManager().registerEvents(new NPCEventListener(this, manager, configHandler), this);
+            getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
 
             // Register commands
             this.getCommand("npcreports").setExecutor(new AdminReportCommandExecutor(this));
-            getCommand("selectreporttype").setExecutor(new ReportTypeCommandExecutor(this));
+            this.getCommand("selectreporttype").setExecutor(new ReportTypeCommandExecutor(this));
             this.getCommand("reportnpcmessage").setExecutor(new ReportTypeCommandExecutor(this));
 
             // Set the logger level based on debugMode
