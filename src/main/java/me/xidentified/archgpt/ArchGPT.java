@@ -7,6 +7,9 @@ import de.cubbossa.translations.TranslationsFramework;
 import de.cubbossa.translations.persistent.YamlMessageStorage;
 import de.cubbossa.translations.persistent.YamlStyleStorage;
 import lombok.Getter;
+import me.xidentified.archgpt.commands.AdminReportCommandExecutor;
+import me.xidentified.archgpt.commands.ArchGPTCommand;
+import me.xidentified.archgpt.commands.ReportTypeCommandExecutor;
 import me.xidentified.archgpt.listeners.NPCEventListener;
 import me.xidentified.archgpt.reports.*;
 import me.xidentified.archgpt.utils.Messages;
@@ -55,17 +58,28 @@ public class ArchGPT extends JavaPlugin {
             this.hologramManager = new HologramManager(this);
             this.reportManager = new ReportManager(this);
             this.audiences = BukkitAudiences.create(this);
+
             TranslationsFramework.enable(new File(this.getDataFolder(), "/../"));
             this.translations = TranslationsFramework.application("ArchGPT");
+
             this.translations.setMessageStorage(new YamlMessageStorage(new File(this.getDataFolder(), "/lang/")));
             this.translations.setStyleStorage(new YamlStyleStorage(new File(this.getDataFolder(), "/lang/styles.yml")));
             this.translations.addMessages(TranslationsFramework.messageFieldsFromClass(Messages.class));
+
             this.loadLanguages();
-            this.translations.setLocaleProvider((audience) -> {
-                boolean usePlayerClientLocale = this.getConfig().getBoolean("use-player-client-locale", true);
-                String fallbackLocaleCode = this.getConfig().getString("default-locale", "en");
+
+            // Set the LocaleProvider
+            translations.setLocaleProvider(audience -> {
+                // Read settings from config
+                boolean usePlayerClientLocale = getConfig().getBoolean("use-player-client-locale", true);
+                String fallbackLocaleCode = getConfig().getString("default-locale", "en");
                 Locale fallbackLocale = Locale.forLanguageTag(fallbackLocaleCode);
-                return audience != null && usePlayerClientLocale ? audience.getOrDefault(Identity.LOCALE, fallbackLocale) : fallbackLocale;
+
+                if (audience == null || !usePlayerClientLocale) {
+                    return fallbackLocale;
+                }
+
+                return audience.getOrDefault(Identity.LOCALE, fallbackLocale);
             });
 
             // Initialize TranslationService for API responses
@@ -81,6 +95,9 @@ public class ArchGPT extends JavaPlugin {
             Objects.requireNonNull(this.getCommand("npcreports")).setExecutor(new AdminReportCommandExecutor(this));
             Objects.requireNonNull(this.getCommand("selectreporttype")).setExecutor(new ReportTypeCommandExecutor(this));
             Objects.requireNonNull(this.getCommand("reportnpcmessage")).setExecutor(new ReportTypeCommandExecutor(this));
+            Objects.requireNonNull(this.getCommand("archgpt")).setExecutor(new ArchGPTCommand(this));
+            Objects.requireNonNull(this.getCommand("archgpt")).setTabCompleter(new ArchGPTCommand(this));
+
 
             // Set the logger level based on debugMode
             Level loggerLevel = configHandler.isDebugMode() ? Level.INFO : Level.WARNING;
@@ -153,6 +170,7 @@ public class ArchGPT extends JavaPlugin {
         // Close translations framework
         translations.close();
         TranslationsFramework.disable();
+        audiences.close();
 
         // Unregister events
         HandlerList.unregisterAll();

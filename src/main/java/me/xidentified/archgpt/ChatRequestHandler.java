@@ -3,7 +3,6 @@ package me.xidentified.archgpt;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import lombok.Getter;
 import me.xidentified.archgpt.utils.LocaleUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -21,14 +20,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -91,10 +87,11 @@ public class ChatRequestHandler {
         }).thenCompose(assistantResponseText -> {
             // Check if translation is needed
             String playerLocale = LocaleUtils.getPlayerLocale(player);
+            plugin.debugLog("Player locale read as: " + playerLocale);
             String defaultLanguageCode = plugin.getConfig().getString("translation.default-locale", "en");
-            if (!playerLocale.substring(0, 2).equalsIgnoreCase(defaultLanguageCode)) {
+            if (!playerLocale.substring(0, 2).equalsIgnoreCase("en")) {
                 String targetLang = playerLocale.substring(0, 2);
-                return plugin.getTranslationService().translateText(assistantResponseText, defaultLanguageCode, targetLang)
+                return plugin.getTranslationService().translateText(assistantResponseText, targetLang)
                         .thenApply(translatedText -> translatedText != null ? translatedText : assistantResponseText);
             }
             plugin.debugLog("Final Processed Response: " + assistantResponseText);

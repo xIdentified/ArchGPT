@@ -2,7 +2,6 @@ package me.xidentified.archgpt.utils;
 
 import de.cubbossa.translations.Message;
 import de.cubbossa.translations.MessageBuilder;
-import net.kyori.adventure.text.ComponentLike;
 
 public class Messages {
 
@@ -18,9 +17,6 @@ public class Messages {
             .build();
     public static final Message GENERAL_PLAYER_NOT_FOUND = new MessageBuilder("general.player_not_found")
             .withDefault("<negative>Player not found: <name>")
-            .build();
-    public static final Message RELOAD_SUCCESS = new MessageBuilder("general.reload_success")
-            .withDefault("<positive>ArchGPT successfully reloaded!")
             .build();
     public static final Message MSG_TOO_SHORT = new MessageBuilder("general.msg_too_short")
             .withDefault("<negative>Your message is too short, use at least <size> characters.")
@@ -58,5 +54,13 @@ public class Messages {
             .build();
     public static final Message REPORT_DELETED = new MessageBuilder("report.deleted")
             .withDefault("<positive>Report successfully deleted.")
+            .build();
+
+    // Reload
+    public static final Message RELOAD_SUCCESS = new MessageBuilder("reload.success")
+            .withDefault("<positive>ArchGPT successfully reloaded!")
+            .build();
+    public static final Message RELOAD_CMD_USAGE = new MessageBuilder("reload.usage")
+            .withDefault("<positive>Usage: /archgpt reload")
             .build();
 }

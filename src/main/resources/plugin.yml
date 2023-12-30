@@ -5,6 +5,7 @@ main: me.xidentified.archgpt.ArchGPT
 api-version: '1.20'
 depend:
   - Citizens
+
 libraries:
   - net.kyori:adventure-api:4.14.0
   - net.kyori:adventure-platform-bukkit:4.3.1
@@ -12,7 +13,12 @@ libraries:
   - net.kyori:adventure-text-serializer-legacy:4.14.0
   - net.kyori:adventure-text-serializer-gson:4.14.0
   - net.kyori:adventure-text-serializer-plain:4.14.0
+
 commands:
+  archgpt:
+    description: Main command for the plugin
+    usage: /<command> [reload]
+    permission: archgpt.admin
   npcreports:
     description: Manage and view NPC message reports.
     usage: /<command>
@@ -22,3 +28,11 @@ commands:
   selectreporttype:
     description: Select a type for the report.
     usage: /<command> <type>
+
+permissions:
+  archgpt.reload:
+    description: Allows the user to reload the plugin's configuration
+    default: op
+  archgpt.admin:
+    description: Access to general admin commands
+    default: op

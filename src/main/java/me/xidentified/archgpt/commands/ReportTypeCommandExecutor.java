@@ -1,4 +1,4 @@
-package me.xidentified.archgpt.reports;
+package me.xidentified.archgpt.commands;
 
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.utils.Messages;

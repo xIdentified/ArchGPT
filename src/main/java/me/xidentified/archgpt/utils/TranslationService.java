@@ -23,7 +23,7 @@ public class TranslationService {
         this.logger = logger;
     }
 
-    public CompletableFuture<String> translateText(String text, String sourceLang, String targetLang) {
+    public CompletableFuture<String> translateText(String text, String targetLang) {
         return CompletableFuture.supplyAsync(() -> {
             try (CloseableHttpClient httpClient = HttpClients.custom()
                     .disableCookieManagement()
@@ -34,7 +34,7 @@ public class TranslationService {
 
                 JsonObject requestBody = new JsonObject();
                 requestBody.addProperty("q", text);
-                requestBody.addProperty("source", sourceLang);
+                requestBody.addProperty("source", "en");
                 requestBody.addProperty("target", targetLang);
 
                 String jsonRequestBody = requestBody.toString();

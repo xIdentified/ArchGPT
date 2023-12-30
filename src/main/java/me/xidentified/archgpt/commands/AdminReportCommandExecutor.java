@@ -1,6 +1,7 @@
-package me.xidentified.archgpt.reports;
+package me.xidentified.archgpt.commands;
 
 import me.xidentified.archgpt.ArchGPT;
+import me.xidentified.archgpt.reports.ReportGUI;
 import me.xidentified.archgpt.utils.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -22,7 +23,10 @@ public class AdminReportCommandExecutor implements CommandExecutor {
             return true;
         }
 
-        // TODO: Add admin permission check
+        if (!sender.hasPermission("archgpt.admin")) {
+            plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
+            return true;
+        }
 
         new ReportGUI(plugin).openGUI(admin);
 
