@@ -3,6 +3,7 @@ package me.xidentified.archgpt.reports;
 import lombok.Getter;
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.storage.model.Report;
+import me.xidentified.archgpt.utils.Messages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -43,7 +44,7 @@ public class ReportGUI implements InventoryHolder, Listener {
         List<Report> reports = plugin.getReportManager().listReports();
 
         if (reports.isEmpty()) {
-            admin.sendMessage(Component.text("There are no reports to display.", NamedTextColor.RED));
+            plugin.sendMessage(admin, Messages.REPORT_NONE_TO_DISPLAY);
             return;
         }
 
@@ -92,10 +93,9 @@ public class ReportGUI implements InventoryHolder, Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
-        if (!(event.getInventory().getHolder() instanceof ReportGUI)) return;
+        if (!(event.getInventory().getHolder() instanceof ReportGUI reportGUI)) return;
         event.setCancelled(true);
 
-        ReportGUI reportGUI = (ReportGUI) event.getInventory().getHolder();
         int clickedSlot = event.getSlot();
 
         if (isNavigationSlot(clickedSlot)) {
@@ -106,7 +106,7 @@ public class ReportGUI implements InventoryHolder, Listener {
             if (reportId != null) {
                 plugin.getReportManager().deleteReport(reportId);
                 reportGUI.openGUI((Player) event.getWhoClicked()); // Refresh the GUI
-                event.getWhoClicked().sendMessage(Component.text("Report successfully deleted.", NamedTextColor.YELLOW));
+                plugin.sendMessage(event.getWhoClicked(), Messages.REPORT_DELETED);
             }
         }
     }

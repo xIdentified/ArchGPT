@@ -2,6 +2,7 @@ package me.xidentified.archgpt.storage.dao;
 
 import me.xidentified.archgpt.storage.model.Report;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 
 import java.io.File;
 import java.sql.*;
@@ -36,7 +37,7 @@ public class SQLiteReportDAO implements ReportDAO {
                     ");";
             stmt.execute(sql);
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            Bukkit.getLogger().warning((e.getMessage()));
         }
     }
 
@@ -46,7 +47,7 @@ public class SQLiteReportDAO implements ReportDAO {
         try {
             conn = DriverManager.getConnection(url);
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            Bukkit.getLogger().warning((e.getMessage()));
         }
         return conn;
     }
@@ -65,7 +66,7 @@ public class SQLiteReportDAO implements ReportDAO {
             pstmt.setString(6, report.getFormattedTimestamp());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            Bukkit.getLogger().warning((e.getMessage()));
         }
     }
 
@@ -93,7 +94,7 @@ public class SQLiteReportDAO implements ReportDAO {
                 ));
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            Bukkit.getLogger().warning((e.getMessage()));
         }
         return reports;
     }
@@ -109,13 +110,13 @@ public class SQLiteReportDAO implements ReportDAO {
             int affectedRows = pstmt.executeUpdate();
 
             if (affectedRows == 0) {
-                System.out.println("No report found with id: " + reportId);
+                Bukkit.getLogger().info("No report found with id: " + reportId);
             } else {
-                System.out.println("Report successfully deleted: " + reportId);
+                Bukkit.getLogger().info("Report successfully deleted: " + reportId);
             }
 
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            Bukkit.getLogger().warning((e.getMessage()));
         }
     }
 

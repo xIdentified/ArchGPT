@@ -13,19 +13,19 @@ import java.util.logging.Logger;
 public class ArchGPTConfig {
     private final Logger logger;
     private final JavaPlugin plugin;
-    @Getter private boolean debugMode;
+    private boolean debugMode;
     private double maxApiCallsPerSecond;
-    @Getter private long npcChatTimeoutMillis;
-    @Getter private String defaultPrompt;
-    @Getter private String apiKey;
-    @Getter private String chatGptEngine;
-    @Getter private String playerMessageColor;
-    @Getter private String npcNameColor;
-    @Getter private String playerNameColor;
-    @Getter private String npcMessageColor;
-    @Getter private int minCharLength;
-    @Getter private int maxResponseLength;
-    @Getter private long chatCooldownMillis;
+    private long npcChatTimeoutMillis;
+    private String defaultPrompt;
+    private String apiKey;
+    private String chatGptEngine;
+    private String playerMessageColor;
+    private String npcNameColor;
+    private String playerNameColor;
+    private String npcMessageColor;
+    private int minCharLength;
+    private int maxResponseLength;
+    private long chatCooldownMillis;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -42,7 +42,7 @@ public class ArchGPTConfig {
         maxApiCallsPerSecond = config.getDouble("max_api_calls_per_second", 5.0);
         npcChatTimeoutMillis = config.getLong("response_timeout", 60000);
         defaultPrompt = config.getString("default_prompt", "Hello!");
-        chatGptEngine = config.getString("chatgpt_engine", "text-davinci-003");
+        chatGptEngine = config.getString("chatgpt_engine", "gpt-3.5-turbo-1106");
         minCharLength = config.getInt("min_char_length", 10);
         maxResponseLength = config.getInt("max_response_length", 200);
         chatCooldownMillis = config.getLong("chat_cooldown", 3000);

@@ -1,8 +1,10 @@
 package me.xidentified.archgpt;
 
+import com.google.gson.JsonArray;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
 import me.xidentified.archgpt.storage.model.Report;
+import me.xidentified.archgpt.utils.Messages;
 import me.xidentified.archgpt.utils.TranslationService;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
@@ -11,6 +13,7 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import com.google.gson.JsonObject;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -33,13 +36,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class NPCConversationManager {
 
     private final ArchGPT plugin;
-    private final TranslationService translationService;
-    //Getter methods for the NPCEventListener
     @Getter private final ArchGPTConfig configHandler;
     @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
     private final Map<UUID, AtomicInteger> conversationTokenCounters; //Ensures conversation doesn't go over token limit
     @Getter private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
-    public final Map<UUID, Long> npcCommentCooldown = new HashMap<>();
+    public final Map<UUID, Long> npcCommentCooldown = new HashMap<>(); //Stores cooldown for NPC greeting to passing player
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     public final Map<UUID, List<Component>> npcChatStatesCache;
     protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
@@ -47,9 +48,8 @@ public class NPCConversationManager {
     private ConfigurationSection npcSection;
     private int maxResponseLength;
 
-    public NPCConversationManager(ArchGPT plugin, TranslationService translationService, ArchGPTConfig configHandler) {
+    public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
-        this.translationService = translationService;
         this.configHandler = configHandler;
         this.chatRequestHandler = new ChatRequestHandler(plugin);
         this.npcChatStatesCache = new ConcurrentHashMap<>();
@@ -89,7 +89,9 @@ public class NPCConversationManager {
             plugin.getActiveConversations().put(playerUUID, true);
         }
 
-        player.sendMessage(Component.text("Conversation started with " + npcName + ". Type 'cancel' to exit.", NamedTextColor.GREEN));
+        plugin.sendMessage(player, Messages.CONVERSATION_STARTED.formatted(
+                Placeholder.unparsed("npc", npcName)
+                ));
 
         conversationTimeoutManager.startConversationTimeout(playerUUID);
 
@@ -128,13 +130,33 @@ public class NPCConversationManager {
     }
 
     public CompletableFuture<Component> getGreeting(Component prompt, Player player) {
-        // Convert the prompt Component to a JSON string
-        String promptText = PlainTextComponentSerializer.plainText().serialize(prompt);
-
         // Prepare the API request
         JsonObject requestBodyJson = new JsonObject();
-        requestBodyJson.addProperty("prompt", promptText + "\n");
-        requestBodyJson.addProperty("max_tokens", maxResponseLength);
+
+        // Specify the model
+        String chatGptEngine = configHandler.getChatGptEngine();
+        requestBodyJson.addProperty("model", chatGptEngine);
+
+        // Create messages array
+        JsonArray messages = new JsonArray();
+
+        // Add system prompt message
+        JsonObject systemMessage = new JsonObject();
+        systemMessage.addProperty("role", "system");
+        systemMessage.addProperty("content", "You are an intelligent NPC capable of conversational interaction.");
+        messages.add(systemMessage);
+
+        // Add user prompt message if needed
+        if (prompt != null && !prompt.equals("")) {
+            JsonObject userMessage = new JsonObject();
+            String promptText = PlainTextComponentSerializer.plainText().serialize(prompt);
+            userMessage.addProperty("role", "user");
+            userMessage.addProperty("content", promptText);
+            messages.add(userMessage);
+        }
+
+        // Add messages to the request body
+        requestBodyJson.add("messages", messages);
 
         // Use the processChatGPTRequest method with RequestType.GREETING
         return getChatRequestHandler()
@@ -202,7 +224,6 @@ public class NPCConversationManager {
         player.sendMessage(messageComponent);
     }
 
-
     public boolean isInActiveConversation(UUID playerUUID) {
         return plugin.getActiveConversations().containsKey(playerUUID);
     }
@@ -226,7 +247,7 @@ public class NPCConversationManager {
             Report report = new Report(newReportId, player.getName(), npc.getName(), reportType, feedback, npcLastMessage, LocalDateTime.now());
             plugin.getReportManager().addReport(report);
             plugin.getReportManager().exitReportingState(playerUUID);
-            player.sendMessage(Component.text("Thank you, your report has been submitted. Type 'cancel' to end the conversation.", NamedTextColor.GREEN));
+            plugin.sendMessage(player, Messages.REPORT_SUBMITTED);
             event.setCancelled(true);
             return true;
         }
@@ -236,7 +257,7 @@ public class NPCConversationManager {
 
     public boolean handleCancelCommand(Player player, UUID playerUUID, String message) {
         if (message.equalsIgnoreCase("cancel")) {
-            player.sendMessage(Component.text("Conversation ended.", NamedTextColor.YELLOW));
+            plugin.sendMessage(player, Messages.CONVERSATION_ENDED);
             endConversation(playerUUID);
             return true;
         }
@@ -245,7 +266,9 @@ public class NPCConversationManager {
 
     public void processPlayerMessage(Player player, UUID playerUUID, Component playerMessage, HologramManager hologramManager) {
         if (PlainTextComponentSerializer.plainText().serialize(playerMessage).length() < configHandler.getMinCharLength()) {
-            player.sendMessage(Component.text("Your message is too short, use at least " + configHandler.getMinCharLength() + " characters.", NamedTextColor.RED));
+            plugin.sendMessage(player, Messages.MSG_TOO_SHORT.formatted(
+                    Placeholder.unparsed("size", String.valueOf(configHandler.getMinCharLength()))
+            ));
             return;
         }
 
@@ -284,30 +307,37 @@ public class NPCConversationManager {
 
         // Prepare the request payload as a JsonObject
         JsonObject jsonRequest = new JsonObject();
-        StringBuilder promptBuilder = new StringBuilder();
+        JsonArray messages = new JsonArray();
+
+        // Add previous conversation messages to 'messages'
         for (Component messageComponent : conversationState) {
-            NamedTextColor roleColor = NamedTextColor.WHITE; // Default color
-            if (messageComponent.style().color() instanceof NamedTextColor) {
-                roleColor = (NamedTextColor) messageComponent.style().color();
-            }
+            JsonObject messageJson = new JsonObject();
+            String role = (messageComponent.style().color() == NamedTextColor.WHITE) ? "assistant" : "user";
             String content = PlainTextComponentSerializer.plainText().serialize(messageComponent);
-            promptBuilder.append(roleColor.toString()).append(": ").append(content).append("\n");
+            messageJson.addProperty("role", role);
+            messageJson.addProperty("content", content);
+            messages.add(messageJson);
         }
+
+        // Add the player's current message
+        JsonObject userMessageJson = new JsonObject();
         String sanitizedPlayerMessage = StringEscapeUtils.escapeJson(PlainTextComponentSerializer.plainText().serialize(playerMessage));
-        promptBuilder.append("user: ").append(sanitizedPlayerMessage).append("\n");
-        jsonRequest.addProperty("prompt", promptBuilder.toString());
-        jsonRequest.addProperty("max_tokens", 150); // You can adjust this value as needed
+        userMessageJson.addProperty("role", "user");
+        userMessageJson.addProperty("content", sanitizedPlayerMessage);
+        messages.add(userMessageJson);
+
+        // Set the 'model' and 'messages' fields in the request
+        jsonRequest.addProperty("model", configHandler.getChatGptEngine());
+        jsonRequest.add("messages", messages);
 
         CompletableFuture<Object> future = getChatRequestHandler().processChatGPTRequest(player, jsonRequest, ChatRequestHandler.RequestType.CONVERSATION, playerMessage, conversationState);
 
         future.thenAccept(responseObject -> {
             synchronized (npcChatStatesCache) {
                 if (!plugin.getActiveConversations().containsKey(playerUUID)) return;
-                if (responseObject instanceof Pair) {
-                    Pair<?, ?> rawPair = (Pair<?, ?>) responseObject;
+                if (responseObject instanceof Pair<?, ?> rawPair) {
 
-                    if (rawPair.getLeft() instanceof Component && rawPair.getRight() instanceof List) {
-                        Component response = (Component) rawPair.getLeft();
+                    if (rawPair.getLeft() instanceof Component response && rawPair.getRight() instanceof List) {
                         List<Component> updatedConversationState = (List<Component>) rawPair.getRight();
 
                         if (!conversationState.equals(updatedConversationState)) {

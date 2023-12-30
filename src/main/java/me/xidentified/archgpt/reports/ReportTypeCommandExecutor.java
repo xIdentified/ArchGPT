@@ -1,8 +1,10 @@
 package me.xidentified.archgpt.reports;
 
 import me.xidentified.archgpt.ArchGPT;
+import me.xidentified.archgpt.utils.Messages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -21,20 +23,17 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String label, @NotNull String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("This command can only be run by players.");
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.GENERAL_CMD_PLAYER_ONLY);
             return true;
         }
-
-        Player player = (Player) sender;
 
         if ("reportnpcmessage".equalsIgnoreCase(cmd.getName())) {
             // Extract the uniqueMessageIdentifier from args
             String uniqueMessageIdentifier = args.length > 0 ? args[0] : null;
 
             if (uniqueMessageIdentifier != null) {
-                // For now, we'll just log it for debugging purposes
-                // Later, you can use this to tie back the report to a specific NPC message
+                // TODO: Use this to tie back the report to a specific NPC message
                 plugin.debugLog("Received report request for message ID: " + uniqueMessageIdentifier);
             }
 
@@ -73,7 +72,9 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
 
             // Place the player into the reporting state to provide feedback
             plugin.getReportManager().enterReportingState(player.getUniqueId());
-            player.sendMessage(Component.text("You've selected " + selectedType + ". Enter your feedback about the last NPC message.", NamedTextColor.GREEN));
+            plugin.sendMessage(player, Messages.REPORT_TYPE_SELECTED.formatted(
+                    Placeholder.unparsed("type", selectedType)
+            ));
         }
         return true;
     }

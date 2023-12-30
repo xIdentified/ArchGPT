@@ -1,5 +1,6 @@
 package me.xidentified.archgpt;
 
+import me.xidentified.archgpt.utils.Messages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
@@ -19,7 +20,6 @@ public class ConversationTimeoutManager {
     }
 
     public void startConversationTimeout(UUID playerUUID) {
-
         plugin.debugLog("Conversation timeout started for " + playerUUID);
 
         // Get the timeout duration from the configuration
@@ -30,8 +30,7 @@ public class ConversationTimeoutManager {
             synchronized (plugin.getNpcChatStatesCache()) {
                 Player player = plugin.getServer().getPlayer(playerUUID);
                 if (player != null) {
-                    player.sendMessage(Component.text("Conversation ended due to inactivity.", NamedTextColor.YELLOW));
-
+                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_INACTIVITY);
                     // Clean up the conversation caches
                     plugin.getNpcChatStatesCache().invalidate(playerUUID);
                     plugin.getActiveConversations().remove(playerUUID);

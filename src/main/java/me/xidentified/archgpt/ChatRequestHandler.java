@@ -4,12 +4,10 @@ package me.xidentified.archgpt;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.xidentified.archgpt.utils.LocaleUtils;
-import me.xidentified.archgpt.utils.TranslationService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -34,109 +32,96 @@ import java.util.stream.Collectors;
 public class ChatRequestHandler {
 
     private final ArchGPT plugin;
-    private final Logger logger;
 
     public ChatRequestHandler(ArchGPT plugin) {
         this.plugin = plugin;
-        this.logger = plugin.getLogger();
     }
 
     public enum RequestType {
         GREETING,
-        CONVERSATION
+        CONVERSATION,
+        WARNING
     }
 
     public CompletableFuture<Object> processChatGPTRequest(Player player, JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<Component> conversationState) {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost httpPost = getHttpPost();
-            plugin.debugLog("Setting Content-Type to application/json");
+        // Asynchronously call ChatGPT API
+        return CompletableFuture.supplyAsync(() -> {
+            try (CloseableHttpClient httpClient = HttpClients.custom()
+                    .disableCookieManagement()
+                    .build()) {
+                HttpPost httpPost = getHttpPost();
 
-            // Convert the JsonObject to a JSON string
-            String jsonRequest = requestBody.toString();
-            plugin.debugLog("Request Body to ChatGPT API: " + jsonRequest);
+                String jsonRequest = requestBody.toString();
+                httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
 
-            // Set the request body with UTF-8 encoding
-            httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
+                plugin.debugLog("Sending request to ChatGPT API: " + requestBody);
+                plugin.debugLog("Request Body: " + jsonRequest);
 
-            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                if (response.getStatusLine().getStatusCode() == 200) {
-                    HttpEntity responseEntity = response.getEntity();
-                    if (responseEntity != null) {
-                        // Parse the response JSON
-                        String jsonResponse = EntityUtils.toString(response.getEntity());
-                        plugin.getLogger().info("ChatGPT API Response: " + jsonResponse);
-
-                        JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
-                        String assistantResponseText = extractAssistantResponseText(responseObject);
-
-                        // Check and perform translation if necessary
-                        String playerLocale = LocaleUtils.getPlayerLocale(player);
-                        String defaultLanguageCode = plugin.getConfig().getString("translation.default-locale", "en");
-                        if (!playerLocale.substring(0, 2).equalsIgnoreCase(defaultLanguageCode)) {
-                            String targetLang = playerLocale.substring(0, 2); // Extract language code
-                            String translatedText = plugin.getTranslationService().translateText(assistantResponseText, defaultLanguageCode, targetLang);
-                            assistantResponseText = translatedText != null ? translatedText : assistantResponseText;
-                        }
-
-                        Component responseComponent = Component.text(assistantResponseText.trim());
-
-                        if (requestType == RequestType.GREETING) {
-                            return CompletableFuture.completedFuture(responseComponent);
-                        } else {
-                            // Sanitize the ChatGPT response
-                            Component sanitizedResponse = sanitizeAPIResponse(responseComponent);
-
-                            // Sanitize the player's message
-                            String sanitizedPlayerMessage = StringEscapeUtils.escapeJson(PlainTextComponentSerializer.plainText().serialize(playerMessageComponent));
-
-                            // Limit the conversation state to a certain number of messages to avoid excessive token usage
-                            if (conversationState.size() > ArchGPTConstants.MAX_CONVERSATION_STATE_SIZE * 2) {
-                                conversationState.subList(0, 2).clear();
-                            }
-
-                            // Update the conversation state with the player's message and the sanitized ChatGPT response
-                            conversationState.add(Component.text("user: " + sanitizedPlayerMessage));
-                            conversationState.add(Component.text("assistant: ").append(sanitizedResponse));
-
-                            return CompletableFuture.completedFuture(Pair.of(sanitizedResponse, conversationState));
-                        }
-                    } else {
-                        // Handle case where responseEntity is null
-                        logger.warning("ChatGPT API returned an empty response body.");
-                        return handleAPIErrorResponse(requestType);
-                    }
-                } else {
+                try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                     int statusCode = response.getStatusLine().getStatusCode();
-                    String errorMessage = EntityUtils.toString(response.getEntity());
-                    logger.warning("ChatGPT API Error (Status Code: " + statusCode + "): " + errorMessage);
+                    plugin.debugLog("Received response from ChatGPT API, Status Code: " + statusCode);
 
-                    return handleAPIErrorResponse(requestType);
+                    if (response.getStatusLine().getStatusCode() == 200) {
+                        String jsonResponse = EntityUtils.toString(response.getEntity());
+                        JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
+                        return extractAssistantResponseText(responseObject);
+                    } else {
+                        throw new RuntimeException("ChatGPT API Error: " + EntityUtils.toString(response.getEntity()));
+                    }
                 }
+            } catch (IOException e) {
+                throw new RuntimeException("ChatGPT API Request Failed: " + e.getMessage());
             }
-        } catch (IOException e) {
-            if (plugin.getConfigHandler().isDebugMode()) {
-                e.printStackTrace();
+        }).thenCompose(assistantResponseText -> {
+            // Check if translation is needed
+            String playerLocale = LocaleUtils.getPlayerLocale(player);
+            String defaultLanguageCode = plugin.getConfig().getString("translation.default-locale", "en");
+            if (!playerLocale.substring(0, 2).equalsIgnoreCase(defaultLanguageCode)) {
+                String targetLang = playerLocale.substring(0, 2);
+                return plugin.getTranslationService().translateText(assistantResponseText, defaultLanguageCode, targetLang)
+                        .thenApply(translatedText -> translatedText != null ? translatedText : assistantResponseText);
             }
-            return handleAPIErrorResponse(requestType);
-        }
+            plugin.debugLog("Final Processed Response: " + assistantResponseText);
+            return CompletableFuture.completedFuture(assistantResponseText);
+        }).thenApply(assistantResponseText -> {
+            // Process the response and prepare final result
+            Component responseComponent = Component.text(assistantResponseText.trim());
+
+            if (requestType == RequestType.GREETING) {
+                return responseComponent;
+            } else {
+                // Additional processing for non-greeting requests
+                Component sanitizedResponse = sanitizeAPIResponse(responseComponent);
+                String sanitizedPlayerMessage = StringEscapeUtils.escapeJson(PlainTextComponentSerializer.plainText().serialize(playerMessageComponent));
+
+                if (conversationState.size() > ArchGPTConstants.MAX_CONVERSATION_STATE_SIZE * 2) {
+                    conversationState.subList(0, 2).clear();
+                }
+
+                conversationState.add(Component.text("user: " + sanitizedPlayerMessage));
+                conversationState.add(Component.text("assistant: ").append(sanitizedResponse));
+
+                return Pair.of(sanitizedResponse, conversationState);
+            }
+        });
     }
 
     private String extractAssistantResponseText(JsonObject responseObject) {
         if (responseObject.has("choices") && !responseObject.getAsJsonArray("choices").isEmpty()) {
             JsonObject choice = responseObject.getAsJsonArray("choices").get(0).getAsJsonObject();
-            if (choice.has("text")) {
-                return choice.get("text").getAsString().trim();
+            if (choice.has("message") && choice.getAsJsonObject("message").has("content")) {
+                return choice.getAsJsonObject("message").get("content").getAsString().trim();
             }
         }
         plugin.getLogger().warning("Invalid response structure from ChatGPT API");
+        plugin.debugLog("ChatGPT API response object: " + responseObject);
         return ""; // Fallback value or handle appropriately
     }
 
     @NotNull
     private HttpPost getHttpPost() {
         String apiKey = plugin.getConfigHandler().getApiKey();
-        String chatGptEngine = plugin.getConfigHandler().getChatGptEngine();
-        String chatGptEndpoint = "https://api.openai.com/v1/engines/" + chatGptEngine + "/completions";
+        String chatGptEndpoint = "https://api.openai.com/v1/chat/completions";
         HttpPost httpPost = new HttpPost(chatGptEndpoint);
 
         // Set the request headers
@@ -150,6 +135,7 @@ public class ChatRequestHandler {
 
         // Remove any "white: assistant:" prefix from the response
         response = response.replaceFirst("(?i)^white: assistant:", "").trim();
+        // TODO: Improve on this ^
 
         // Convert item/biome names like SNOWY_TAIGA to "snowy taiga"
         response = Arrays.stream(response.split(" "))
@@ -192,20 +178,12 @@ public class ChatRequestHandler {
 
     private String capitalizeSentences(String str) {
         Matcher m = Pattern.compile("(^|[.!?]\\s*)([a-z])").matcher(str);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while (m.find()) {
             m.appendReplacement(sb, m.group(1) + m.group(2).toUpperCase());
         }
         m.appendTail(sb);
         return sb.toString();
-    }
-
-    private CompletableFuture<Object> handleAPIErrorResponse(RequestType requestType) {
-        if (requestType == RequestType.GREETING) {
-            return CompletableFuture.completedFuture(Component.text("Hello there!"));
-        } else {
-            return CompletableFuture.completedFuture(Pair.of(Component.text("Sorry, I was lost in thought... Could you repeat that?"), new ArrayList<Component>()));
-        }
     }
 
 }

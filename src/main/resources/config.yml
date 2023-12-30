@@ -2,7 +2,7 @@
 debug_mode: false
 
 api_key: "YOUR_OPENAI_API_KEY"
-chatgpt_engine: "text-davinci-003" # The OpenAI GPT engine to use
+chatgpt_engine: "gpt-3.5-turbo-1106" # The OpenAI GPT engine to use
 max_response_length: 200 # Maximum length of response from ChatGPT (in tokens)
 max_api_calls_per_second: 5
 
@@ -39,5 +39,5 @@ storage:
 
 translation:
   use-player-client-locale: true  # Use player locale for plugin messages and ChatGPT response language
-  default-locale: "en"
-  libre_endpoint: 'https://libretranslate.de'
+  default-locale: "en" # For plugin messages
+  libre_endpoint: 'https://libretranslate.de' # For ChatGPT responses

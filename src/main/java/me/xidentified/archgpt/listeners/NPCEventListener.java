@@ -2,12 +2,14 @@ package me.xidentified.archgpt.listeners;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.xidentified.archgpt.*;
+import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -118,7 +120,7 @@ public class NPCEventListener implements Listener {
                 if (!npcEntity.getWorld().equals(player.getWorld())) {
                     // End conversation if player is in a different world
                     conversationManager.endConversation(playerUUID);
-                    player.sendMessage(Component.text("Conversation ended because you changed worlds.", NamedTextColor.YELLOW));
+                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
                     return; // Skip further processing since conversation has ended
                 }
 
@@ -127,7 +129,7 @@ public class NPCEventListener implements Listener {
                     double distance = player.getLocation().distance(npcEntity.getLocation());
                     if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
                         conversationManager.endConversation(playerUUID);
-                        player.sendMessage(Component.text("Conversation ended because you walked away.", NamedTextColor.YELLOW));
+                        plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
                     }
                 }
             }
@@ -136,24 +138,33 @@ public class NPCEventListener implements Listener {
         // If not in conversation, check if any NPC wants to greet the player
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
             if (npc.isSpawned() && conversationManager.isInLineOfSight(npc, player) && conversationManager.canComment(npc)) {
+                // Check for greeting cooldown
+                Long lastGreetTime = conversationManager.npcCommentCooldown.getOrDefault(npc.getUniqueId(), 0L);
+                if (System.currentTimeMillis() - lastGreetTime < ArchGPTConstants.GREETING_COOLDOWN_MS) {
+                    continue; // Skip if still in cooldown
+                }
+
+                // Fetch the prompt from config
                 String prompt = plugin.getConfig().getString("npcs." + npc.getName());
                 if (prompt != null && !prompt.isEmpty()) {
                     // Modify the prompt to specify a greeting context
                     Component promptComponent = Component.text(prompt)
                             .append(Component.newline())
-                            .append(Component.text("A player approaches you. How do you greet them?"));
+                            .append(Component.text("A player named " + player.getName() + " approaches you. How do you greet them?"));
 
                     // Get the greeting for the NPC asynchronously
                     conversationManager.getGreeting(promptComponent, player).thenAccept(greeting -> {
-                        // Utilize the sendNPCMessage method to send the greeting
-                        conversationManager.sendNPCMessage(player, playerUUID, npc.getName(), greeting);
-
-                        // Update the cooldown for the NPC
-                        conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
+                        if (greeting != null) {
+                            Bukkit.getScheduler().runTask(plugin, () -> {
+                                // Utilize the sendNPCMessage method to send the greeting
+                                conversationManager.sendNPCMessage(player, npc.getUniqueId(), npc.getName(), greeting);
+                                // Update the cooldown for the NPC
+                                conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
+                            });
+                        }
                     });
                 }
             }
         }
     }
-
 }

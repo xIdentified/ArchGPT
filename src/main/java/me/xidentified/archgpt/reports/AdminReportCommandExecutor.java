@@ -1,6 +1,7 @@
 package me.xidentified.archgpt.reports;
 
 import me.xidentified.archgpt.ArchGPT;
+import me.xidentified.archgpt.utils.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -16,12 +17,13 @@ public class AdminReportCommandExecutor implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String label, @NotNull String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("This command can only be run by players.");
+        if (!(sender instanceof Player admin)) {
+            plugin.sendMessage(sender, Messages.GENERAL_CMD_PLAYER_ONLY);
             return true;
         }
 
-        Player admin = (Player) sender;
+        // TODO: Add admin permission check
+
         new ReportGUI(plugin).openGUI(admin);
 
         return true;
