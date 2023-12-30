@@ -2,6 +2,7 @@ package me.xidentified.archgpt.utils;
 
 import de.cubbossa.translations.Message;
 import de.cubbossa.translations.MessageBuilder;
+import net.kyori.adventure.text.ComponentLike;
 
 public class Messages {
 
@@ -9,8 +10,8 @@ public class Messages {
     public static final Message GENERAL_CMD_PLAYER_ONLY = new MessageBuilder("general.must_be_player")
             .withDefault("<negative>Only players can use this command.")
             .build();
-    public static final Message GENERAL_NO_PERM = new MessageBuilder("general.no_perm")
-            .withDefault("<negative>You don't have sufficient permission")
+    public static final Message GENERAL_CHAT_COOLDOWN = new MessageBuilder("general.chat_cooldown")
+            .withDefault("<negative>Please wait before sending another message.")
             .build();
     public static final Message GENERAL_CMD_NO_PERM = new MessageBuilder("general.cmd.no_perm")
             .withDefault("<negative>You don't have permission to use this command.")

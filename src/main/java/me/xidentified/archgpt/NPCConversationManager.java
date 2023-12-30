@@ -3,9 +3,10 @@ package me.xidentified.archgpt;
 import com.google.gson.JsonArray;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
+import me.xidentified.archgpt.context.EnvironmentalContextProvider;
+import me.xidentified.archgpt.context.PlayerContextProvider;
 import me.xidentified.archgpt.storage.model.Report;
 import me.xidentified.archgpt.utils.Messages;
-import me.xidentified.archgpt.utils.TranslationService;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -44,7 +45,6 @@ public class NPCConversationManager {
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     public final Map<UUID, List<Component>> npcChatStatesCache;
     protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
-
     private ConfigurationSection npcSection;
     private int maxResponseLength;
 
@@ -66,23 +66,69 @@ public class NPCConversationManager {
         maxResponseLength = configHandler.getMaxResponseLength();
     }
 
+    public CompletableFuture<Component> getGreeting(Component prompt, Player player) {
+        // Prepare the API request
+        JsonObject requestBodyJson = new JsonObject();
+        String chatGptEngine = configHandler.getChatGptEngine();
+        requestBodyJson.addProperty("model", chatGptEngine);
+
+        // Create messages array
+        JsonArray messages = new JsonArray();
+
+        // Add system prompt message
+        JsonObject systemMessage = new JsonObject();
+        systemMessage.addProperty("role", "system");
+        systemMessage.addProperty("content", "You are an intelligent NPC capable of conversational interaction.");
+        messages.add(systemMessage);
+
+        // Gather environmental and player context
+        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(player);
+        PlayerContextProvider playerContext = new PlayerContextProvider(player);
+        String environmentalContext = envContext.getFormattedContext(PlainTextComponentSerializer.plainText().serialize(prompt));
+        String playerSpecificContext = playerContext.getFormattedContext("");
+
+        // Combine contexts
+        String combinedContext = environmentalContext + " " + playerSpecificContext;
+
+        // Add user prompt message with combined context
+        JsonObject userMessage = new JsonObject();
+        userMessage.addProperty("role", "user");
+        userMessage.addProperty("content", combinedContext);
+        messages.add(userMessage);
+
+        // Add messages to the request body
+        requestBodyJson.add("messages", messages);
+
+        // Process the request
+        return getChatRequestHandler()
+                .processChatGPTRequest(player, requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
+                .thenApply(responseObject -> (Component) responseObject);
+    }
+
     public void startConversation(Player player, NPC npc) {
         UUID playerUUID = player.getUniqueId();
         String npcName = npc.getName();
 
         // Player is not in an ongoing conversation, start a new one
         playerNPCMap.put(playerUUID, npc);
+
+        // Gather environmental and player context
         EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(player);
+        PlayerContextProvider playerContext = new PlayerContextProvider(player);
         String defaultPrompt = configHandler.getDefaultPrompt();
         String npcSpecificPrompt = npcSection.getString(npcName, "");
         String npcPrompt = defaultPrompt + (npcSpecificPrompt.isEmpty() ? "" : " " + npcSpecificPrompt);
-        String formattedPrompt = envContext.getFormattedContext(npcPrompt);
+        String environmentalContext = envContext.getFormattedContext(npcPrompt);
+        String playerSpecificContext = playerContext.getFormattedContext("");
 
-        Component npcIntroComponent = Component.text(formattedPrompt);
+        // Combine contexts
+        String combinedContext = environmentalContext + " " + playerSpecificContext;
+
+        Component npcIntroComponent = Component.text(combinedContext);
         List<Component> initialConversationState = new ArrayList<>();
         initialConversationState.add(npcIntroComponent);
 
-        plugin.debugLog("Initial Conversation State: " + initialConversationState);
+        //plugin.debugLog("Initial Conversation State: " + initialConversationState);
 
         npcChatStatesCache.put(playerUUID, initialConversationState);
         synchronized (plugin.getActiveConversations()) {
@@ -129,42 +175,6 @@ public class NPCConversationManager {
         conversationTokenCounters.put(playerUUID, tokenCounter);
     }
 
-    public CompletableFuture<Component> getGreeting(Component prompt, Player player) {
-        // Prepare the API request
-        JsonObject requestBodyJson = new JsonObject();
-
-        // Specify the model
-        String chatGptEngine = configHandler.getChatGptEngine();
-        requestBodyJson.addProperty("model", chatGptEngine);
-
-        // Create messages array
-        JsonArray messages = new JsonArray();
-
-        // Add system prompt message
-        JsonObject systemMessage = new JsonObject();
-        systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", "You are an intelligent NPC capable of conversational interaction.");
-        messages.add(systemMessage);
-
-        // Add user prompt message if needed
-        if (prompt != null && !prompt.equals("")) {
-            JsonObject userMessage = new JsonObject();
-            String promptText = PlainTextComponentSerializer.plainText().serialize(prompt);
-            userMessage.addProperty("role", "user");
-            userMessage.addProperty("content", promptText);
-            messages.add(userMessage);
-        }
-
-        // Add messages to the request body
-        requestBodyJson.add("messages", messages);
-
-        // Use the processChatGPTRequest method with RequestType.GREETING
-        return getChatRequestHandler()
-                .processChatGPTRequest(player, requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
-                .thenApply(responseObject -> (Component) responseObject); // Cast the responseObject to Component
-    }
-
-
     public boolean isInLineOfSight(NPC npc, Player player) {
         if (!npc.isSpawned() || !npc.getEntity().getWorld().equals(player.getWorld())) {
             return false;
@@ -189,7 +199,7 @@ public class NPCConversationManager {
 
     public boolean canComment(NPC npc) {
         long lastCommentTime = npcCommentCooldown.getOrDefault(npc.getUniqueId(), 0L);
-        long commentCooldown = 3 * 60 * 1000; // 3 minutes in milliseconds
+        long commentCooldown = ArchGPTConstants.GREETING_COOLDOWN_MS;
         return System.currentTimeMillis() - lastCommentTime > commentCooldown;
     }
 

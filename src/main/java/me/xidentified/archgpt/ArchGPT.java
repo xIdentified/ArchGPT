@@ -17,6 +17,7 @@ import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.ComponentLike;
 import org.bukkit.command.CommandSender;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -30,13 +31,16 @@ import java.util.logging.Level;
 
 @Getter
 public class ArchGPT extends JavaPlugin {
+    // Maps
     private final Cache<UUID, List<String>> npcChatStatesCache = CacheBuilder.newBuilder()
             .expireAfterWrite(ArchGPTConstants.CACHE_EXPIRATION_MINUTES, TimeUnit.MINUTES)
             .build();
-    private ArchGPTConfig configHandler;
     private final Map<UUID, Boolean> activeConversations = new ConcurrentHashMap<>();
-    private final Map<UUID, Long> playerCooldowns = new HashMap<>();
-    private final Map<UUID, AtomicInteger> conversationTokenCounters = new HashMap<>();
+    private final Map<UUID, Long> playerCooldowns = new ConcurrentHashMap<>();
+    public final ConcurrentHashMap<UUID, Semaphore> playerSemaphores = new ConcurrentHashMap<>();
+    private final Map<UUID, AtomicInteger> conversationTokenCounters = new ConcurrentHashMap<>();
+    // Managers
+    private ArchGPTConfig configHandler;
     private HologramManager hologramManager;
     private ReportManager reportManager;
     private TranslationService translationService;
@@ -149,6 +153,13 @@ public class ArchGPT extends JavaPlugin {
         // Close translations framework
         translations.close();
         TranslationsFramework.disable();
+
+        // Unregister events
+        HandlerList.unregisterAll();
+
+        playerSemaphores.clear();
+        conversationTokenCounters.clear();
+        playerCooldowns.clear();
     }
 
     public void debugLog(String message) {

@@ -3,6 +3,7 @@ package me.xidentified.archgpt;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import lombok.Getter;
 import me.xidentified.archgpt.utils.LocaleUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -23,14 +24,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ChatRequestHandler {
-
     private final ArchGPT plugin;
 
     public ChatRequestHandler(ArchGPT plugin) {
@@ -39,23 +42,27 @@ public class ChatRequestHandler {
 
     public enum RequestType {
         GREETING,
-        CONVERSATION,
-        WARNING
+        CONVERSATION
     }
 
     public CompletableFuture<Object> processChatGPTRequest(Player player, JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<Component> conversationState) {
-        // Asynchronously call ChatGPT API
+        UUID playerUUID = player.getUniqueId();
+        plugin.playerSemaphores.putIfAbsent(playerUUID, new Semaphore(1));
+
         return CompletableFuture.supplyAsync(() -> {
             try (CloseableHttpClient httpClient = HttpClients.custom()
                     .disableCookieManagement()
                     .build()) {
-                HttpPost httpPost = getHttpPost();
+                // Acquire the semaphore for this specific player
+                Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
+                semaphore.acquire();
 
+                HttpPost httpPost = getHttpPost();
                 String jsonRequest = requestBody.toString();
                 httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
 
-                plugin.debugLog("Sending request to ChatGPT API: " + requestBody);
-                plugin.debugLog("Request Body: " + jsonRequest);
+                // plugin.debugLog("Sending request to ChatGPT API: " + requestBody);
+                // plugin.debugLog("Request Body: " + jsonRequest);
 
                 try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                     int statusCode = response.getStatusLine().getStatusCode();
@@ -69,8 +76,17 @@ public class ChatRequestHandler {
                         throw new RuntimeException("ChatGPT API Error: " + EntityUtils.toString(response.getEntity()));
                     }
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Thread was interrupted: " + e.getMessage());
             } catch (IOException e) {
                 throw new RuntimeException("ChatGPT API Request Failed: " + e.getMessage());
+            } finally {
+                // Ensure the semaphore is released for this player
+                Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
+                if (semaphore != null) {
+                    semaphore.release();
+                }
             }
         }).thenCompose(assistantResponseText -> {
             // Check if translation is needed
@@ -132,10 +148,6 @@ public class ChatRequestHandler {
 
     private Component sanitizeAPIResponse(Component chatGptResponseComponent) {
         String response = PlainTextComponentSerializer.plainText().serialize(chatGptResponseComponent);
-
-        // Remove any "white: assistant:" prefix from the response
-        response = response.replaceFirst("(?i)^white: assistant:", "").trim();
-        // TODO: Improve on this ^
 
         // Convert item/biome names like SNOWY_TAIGA to "snowy taiga"
         response = Arrays.stream(response.split(" "))

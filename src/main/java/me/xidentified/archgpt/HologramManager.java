@@ -10,6 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class HologramManager {
 
@@ -17,7 +18,7 @@ public class HologramManager {
     private ArmorStand armorStand;
     private int animationState = 0;
     private BukkitRunnable animationTask;
-    private final List<ArmorStand> allHolograms = new ArrayList<>();
+    private final List<ArmorStand> allHolograms = new CopyOnWriteArrayList<>();
     private final Map<UUID, ArmorStand> playerHolograms = new HashMap<>();
 
     public HologramManager(JavaPlugin plugin) {

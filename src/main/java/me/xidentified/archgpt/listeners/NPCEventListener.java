@@ -17,15 +17,18 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 // Anything in this class applies to NPCs regardless of server type
 public class NPCEventListener implements Listener {
-
     private final ArchGPT plugin;
     private final NPCConversationManager conversationManager;
     private final ArchGPTConfig configHandler;
+    private final Set<UUID> npcsProcessingGreeting = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Long> lastChatTimestamps = new ConcurrentHashMap<>();
 
     public NPCEventListener(ArchGPT plugin, NPCConversationManager conversationManager, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -65,8 +68,15 @@ public class NPCEventListener implements Listener {
             UUID playerUUID = player.getUniqueId();
             Component playerMessageComponent = event.originalMessage();
             HologramManager hologramManager = new HologramManager(plugin);
+            long now = System.currentTimeMillis();
+            long lastChatTimestamp = lastChatTimestamps.getOrDefault(playerUUID, 0L);
 
-            plugin.debugLog("onPlayerChat event triggered for player '" + player.getName() + "'. Message: " + PlainTextComponentSerializer.plainText().serialize(playerMessageComponent));
+            if (now - lastChatTimestamp < ArchGPTConstants.CHAT_COOLDOWN_MS) {
+                // If the player is trying to chat during the cooldown period
+                plugin.sendMessage(player, Messages.GENERAL_CHAT_COOLDOWN);
+                event.setCancelled(true);
+                return;
+            }
 
             // Check if player is already in conversation
             if (!conversationManager.isInActiveConversation(playerUUID)) {
@@ -88,6 +98,8 @@ public class NPCEventListener implements Listener {
 
             // Process the player's message
             conversationManager.processPlayerMessage(player, playerUUID, playerMessageComponent, hologramManager);
+
+            lastChatTimestamps.put(playerUUID, now);
         }
     }
 
@@ -138,10 +150,9 @@ public class NPCEventListener implements Listener {
         // If not in conversation, check if any NPC wants to greet the player
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
             if (npc.isSpawned() && conversationManager.isInLineOfSight(npc, player) && conversationManager.canComment(npc)) {
-                // Check for greeting cooldown
-                Long lastGreetTime = conversationManager.npcCommentCooldown.getOrDefault(npc.getUniqueId(), 0L);
-                if (System.currentTimeMillis() - lastGreetTime < ArchGPTConstants.GREETING_COOLDOWN_MS) {
-                    continue; // Skip if still in cooldown
+                if (!npcsProcessingGreeting.add(npc.getUniqueId())) {
+                    // This NPC is already processing a greeting, skip to the next NPC
+                    continue;
                 }
 
                 // Fetch the prompt from config
@@ -162,9 +173,17 @@ public class NPCEventListener implements Listener {
                                 conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
                             });
                         }
+                        npcsProcessingGreeting.remove(npc.getUniqueId());
                     });
                 }
             }
         }
     }
+
+    @EventHandler
+    public void onPlayerLeave(PlayerQuitEvent event) {
+        UUID playerUUID = event.getPlayer().getUniqueId();
+        plugin.playerSemaphores.remove(playerUUID);
+    }
+
 }
