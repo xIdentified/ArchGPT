@@ -1,4 +1,4 @@
-package me.xidentified.archgpt;
+package me.xidentified.archgpt.context;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -9,10 +9,10 @@ import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class EnvironmentalContextProvider {
-
     private final Player player;
 
     public EnvironmentalContextProvider(Player player) {
@@ -24,88 +24,58 @@ public class EnvironmentalContextProvider {
         String timeOfDay = getTimeOfDay();
         String weather = getWeather();
         String biome = getBiome();
-        String playerArmor = getPlayerArmor();
-        String playerHandItem = getPlayerHeldItem();
         String entityContext = getNearbyEntitiesContext();
-        String playerHealthContext = getPlayerHealthContext();
-        String playerHungerContext = getPlayerHungerContext();
 
-        return String.format("%s. The time is %s and the weather is %s. The biome (environment) is %s. The player you're talking to is wearing %s and holding %s. %s. We are %s.",
-                npcPrompt, timeOfDay, weather, biome, playerArmor, playerHandItem, playerHealthContext, playerHungerContext, entityContext, npcLocationContext);
+        return String.format("%s. The current time is %s and the weather is %s. The biome (environment) you are in is %s. %s. Your current location is %s.",
+                npcPrompt, timeOfDay, weather, biome, entityContext, npcLocationContext);
     }
 
     public String getTimeOfDay() {
         long time = player.getWorld().getTime();
-        return time < 6000 ? "morning" :
-                time < 12000 ? "afternoon" :
-                        time < 18000 ? "evening" : "night";
+
+        // Minecraft day starts at 0 (sunrise) and ends at 23999
+        return time < 2300 ? "early morning" : // 0 - 2299
+                time < 4500 ? "mid morning" :   // 2300 - 4499
+                        time < 6000 ? "late morning" :  // 4500 - 5999
+                                time < 9000 ? "noon" :     // 6000 - 8999
+                                        time < 12000 ? "early afternoon" : // 9000 - 11999
+                                                time < 13500 ? "mid afternoon" :  // 12000 - 13499
+                                                        time < 18000 ? "late afternoon" : // 13500 - 17999
+                                                                time < 21000 ? "early evening" : // 18000 - 20999
+                                                                        time < 24000 ? "night" :  // 21000 - 23999
+                                                                                "unknown";  // Fallback for unexpected values
+    }
+
+    public boolean isSnowyBiome(Biome biome) {
+        // List of snowy biomes in Minecraft (adjust as needed)
+        List<Biome> snowyBiomes = Arrays.asList(
+                Biome.SNOWY_BEACH, Biome.SNOWY_SLOPES,
+                Biome.SNOWY_TAIGA, Biome.SNOWY_PLAINS,
+                Biome.ICE_SPIKES, Biome.FROZEN_RIVER,
+                Biome.FROZEN_OCEAN, Biome.FROZEN_PEAKS,
+                Biome.DEEP_FROZEN_OCEAN
+        );
+
+        return snowyBiomes.contains(biome);
     }
 
     public String getWeather() {
         World world = player.getWorld();
         boolean isRaining = world.hasStorm();
         boolean isThundering = world.isThundering();
-        boolean isSnowing = isRaining && player.getLocation().getBlock().getBiome().name().contains("SNOW");
+
+        Biome currentBiome = player.getLocation().getBlock().getBiome();
+        boolean isSnowing = isRaining && isSnowyBiome(currentBiome);
 
         return isThundering ? "thunderstorm" :
                 isSnowing ? "snowing" :
                         isRaining ? "rainy" : "clear";
     }
 
+
     public String getBiome() {
         Biome biome = player.getLocation().getBlock().getBiome();
         return biome.toString();
-    }
-
-    public String getPlayerHealthContext() {
-        double health = player.getHealth();
-        double maxHealth = player.getMaxHealth();
-
-        if (health <= maxHealth * 0.25) {
-            return "The player appears severely injured.";
-        } else if (health <= maxHealth * 0.5) {
-            return "The player has visible injuries.";
-        }
-        return "";
-    }
-
-    public String getPlayerHungerContext() {
-        int hunger = player.getFoodLevel();
-
-        if (hunger <= 6) {
-            return "The player looks extremely hungry and malnourished.";
-        } else if (hunger <= 12) {
-            return "The player seems hungry.";
-        }
-        return "";
-    }
-
-    public String getPlayerArmor() {
-        ItemStack[] armor = player.getInventory().getArmorContents();
-        StringBuilder armorDesc = new StringBuilder();
-        for (ItemStack item : armor) {
-            if (item != null && item.getType() != Material.AIR) {
-                armorDesc.append(item.getType().name());
-                if (item.hasItemMeta() && item.getItemMeta().hasEnchants()) {
-                    armorDesc.append("(Enchanted)");
-                }
-                armorDesc.append(", ");
-            }
-        }
-        return armorDesc.length() > 2 ? armorDesc.substring(0, armorDesc.length() - 2) : "none";
-    }
-
-    public String getPlayerHeldItem() {
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (item.getType() != Material.AIR) {
-            String itemName = item.getType().name();
-            if (item.hasItemMeta() && item.getItemMeta().hasEnchants()) {
-                itemName += "(Enchanted)";
-            }
-            return itemName;
-        } else {
-            return "nothing";
-        }
     }
 
     public String getLocationContext() {
