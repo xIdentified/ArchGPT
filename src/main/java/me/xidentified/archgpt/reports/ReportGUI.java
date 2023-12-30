@@ -29,7 +29,7 @@ public class ReportGUI implements InventoryHolder, Listener {
     private final Inventory inventory;
     @Getter private Map<Integer, Integer> slotToReportIdMap = new HashMap<>();
     private int currentPage = 0;
-    private int totalPages;
+    private final int totalPages;
 
     public ReportGUI(ArchGPT plugin) {
         this.plugin = plugin;

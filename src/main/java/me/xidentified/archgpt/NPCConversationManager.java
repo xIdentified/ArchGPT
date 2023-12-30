@@ -46,7 +46,6 @@ public class NPCConversationManager {
     public final Map<UUID, List<Component>> npcChatStatesCache;
     protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
     private ConfigurationSection npcSection;
-    private int maxResponseLength;
 
     public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -63,7 +62,6 @@ public class NPCConversationManager {
         // Configuration values that will be loaded once
         FileConfiguration config = plugin.getConfig();
         npcSection = config.getConfigurationSection("npcs");
-        maxResponseLength = configHandler.getMaxResponseLength();
     }
 
     public CompletableFuture<Component> getGreeting(Component prompt, Player player) {
@@ -71,6 +69,7 @@ public class NPCConversationManager {
         JsonObject requestBodyJson = new JsonObject();
         String chatGptEngine = configHandler.getChatGptEngine();
         requestBodyJson.addProperty("model", chatGptEngine);
+        requestBodyJson.addProperty("max_tokens", configHandler.getMaxResponseLength());
 
         // Create messages array
         JsonArray messages = new JsonArray();
@@ -240,7 +239,7 @@ public class NPCConversationManager {
 
     public boolean handleReportingState(Player player, UUID playerUUID, AsyncChatEvent event) {
         if (plugin.getReportManager().selectingReportTypePlayers.contains(playerUUID)) {
-            player.sendMessage(Component.text("Please click one of the report types above to continue.", NamedTextColor.RED));
+            plugin.sendMessage(player, Messages.REPORT_SELECT_TYPE);
             event.setCancelled(true);
             return true;
         }
@@ -336,10 +335,12 @@ public class NPCConversationManager {
         userMessageJson.addProperty("content", sanitizedPlayerMessage);
         messages.add(userMessageJson);
 
-        // Set the 'model' and 'messages' fields in the request
+        // Set the 'model', 'messages', and 'max_tokens' fields in the request
         jsonRequest.addProperty("model", configHandler.getChatGptEngine());
         jsonRequest.add("messages", messages);
+        jsonRequest.addProperty("max_tokens", configHandler.getMaxResponseLength());
 
+        // Send the request
         CompletableFuture<Object> future = getChatRequestHandler().processChatGPTRequest(player, jsonRequest, ChatRequestHandler.RequestType.CONVERSATION, playerMessage, conversationState);
 
         future.thenAccept(responseObject -> {

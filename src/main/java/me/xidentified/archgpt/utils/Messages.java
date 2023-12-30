@@ -46,8 +46,11 @@ public class Messages {
             .withDefault("<negative>There are no reports to display.")
             .build();
     public static final Message REPORT_TYPE_SELECTED = new MessageBuilder("report.type_selected")
-            .withDefault("You've selected <type>. Enter your feedback about the last NPC message.")
+            .withDefault("<positive>You've selected <type>. Enter your feedback about the last NPC message.")
             .withPlaceholder("type")
+            .build();
+    public static final Message REPORT_SELECT_TYPE = new MessageBuilder("report.select_type")
+            .withDefault("<negative>Please click one of the report types above to continue.")
             .build();
     public static final Message REPORT_SUBMITTED = new MessageBuilder("report.submitted")
             .withDefault("<positive>Thank you, your report has been submitted. Type 'cancel' to end the conversation.")

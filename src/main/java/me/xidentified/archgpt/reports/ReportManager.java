@@ -1,6 +1,6 @@
 package me.xidentified.archgpt.reports;
-import java.io.File;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.storage.dao.MySQLReportDAO;
@@ -14,7 +14,7 @@ public class ReportManager {
     private final ReportDAO reportDAO;
     public Set<UUID> reportingPlayers = new HashSet<>();
     public Set<UUID> selectingReportTypePlayers = new HashSet<>();
-    private final Map<UUID, String> selectedReportTypes = new HashMap<>();
+    private final Map<UUID, String> selectedReportTypes = new ConcurrentHashMap<>();
 
     public ReportManager(ArchGPT plugin) {
         String storageType = plugin.getConfig().getString("storage.type", "yaml");
