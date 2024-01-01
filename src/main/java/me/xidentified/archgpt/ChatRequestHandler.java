@@ -57,8 +57,7 @@ public class ChatRequestHandler {
                 String jsonRequest = requestBody.toString();
                 httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
 
-                // plugin.debugLog("Sending request to ChatGPT API: " + requestBody);
-                // plugin.debugLog("Request Body: " + jsonRequest);
+                plugin.debugLog("Request body sent to GPT: " + jsonRequest);
 
                 try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                     int statusCode = response.getStatusLine().getStatusCode();
@@ -88,7 +87,6 @@ public class ChatRequestHandler {
             // Check if translation is needed
             String playerLocale = LocaleUtils.getPlayerLocale(player);
             plugin.debugLog("Player locale read as: " + playerLocale);
-            String defaultLanguageCode = plugin.getConfig().getString("translation.default-locale", "en");
             if (!playerLocale.substring(0, 2).equalsIgnoreCase("en")) {
                 String targetLang = playerLocale.substring(0, 2);
                 return plugin.getTranslationService().translateText(assistantResponseText, targetLang)
@@ -96,6 +94,7 @@ public class ChatRequestHandler {
             }
             plugin.debugLog("Final Processed Response: " + assistantResponseText);
             return CompletableFuture.completedFuture(assistantResponseText);
+
         }).thenApply(assistantResponseText -> {
             // Process the response and prepare final result
             Component responseComponent = Component.text(assistantResponseText.trim());
@@ -162,21 +161,8 @@ public class ChatRequestHandler {
         response = capitalizeSentences(response);
         response = response.replace(" i ", " I ");
         response = response.replace(" i'm ", " I'm ");
-        response = truncateResponse(response);
         return Component.text(response);
     }
-
-    public String truncateResponse(String response) {
-        if (response.length() <= ArchGPTConstants.MAX_CHAT_LENGTH) {
-            return response;
-        }
-        int endPoint = response.lastIndexOf('.', ArchGPTConstants.MAX_CHAT_LENGTH);
-        if (endPoint == -1) {
-            endPoint = response.lastIndexOf(' ', ArchGPTConstants.MAX_CHAT_LENGTH);
-        }
-        return response.substring(0, endPoint + 1) + "..."; //
-    }
-
 
     private String capitalizeFirstLetter(String str) {
         if (str == null || str.isEmpty()) {

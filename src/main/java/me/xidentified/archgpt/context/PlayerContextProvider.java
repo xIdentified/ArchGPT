@@ -18,7 +18,7 @@ public class PlayerContextProvider {
         String playerHealthContext = getPlayerHealthContext();
         String playerHungerContext = getPlayerHungerContext();
 
-        return String.format("%s. The player you're speaking to is wearing %s and holding %s. %s %s. %s",
+        return String.format("%s. The player you're speaking to is wearing %s and holding %s. %s %s %s",
                 npcPrompt, playerArmor, playerHandItem, playerHealthContext, playerHungerContext, playerExperience);
     }
 

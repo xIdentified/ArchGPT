@@ -25,8 +25,9 @@ public class Messages {
 
     // Conversation
     public static final Message CONVERSATION_STARTED = new MessageBuilder("conversation.started")
-            .withDefault("<yellow>Conversation started with <npc>. Type 'cancel' to exit.")
+            .withDefault("<yellow>Conversation started with <npc>. Type <cancel> to exit.")
             .withPlaceholder("npc")
+            .withPlaceholder("cancel")
             .build();
     public static final Message CONVERSATION_ENDED = new MessageBuilder("conversation.started")
             .withDefault("<yellow>Conversation ended.")

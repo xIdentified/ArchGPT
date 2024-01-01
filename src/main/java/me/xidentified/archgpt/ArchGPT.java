@@ -14,11 +14,13 @@ import me.xidentified.archgpt.listeners.NPCEventListener;
 import me.xidentified.archgpt.reports.*;
 import me.xidentified.archgpt.utils.Messages;
 import me.xidentified.archgpt.utils.Metrics;
+import me.xidentified.archgpt.utils.Placeholders;
 import me.xidentified.archgpt.utils.TranslationService;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.ComponentLike;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -102,6 +104,12 @@ public class ArchGPT extends JavaPlugin {
             // Set the logger level based on debugMode
             Level loggerLevel = configHandler.isDebugMode() ? Level.INFO : Level.WARNING;
             getLogger().setLevel(loggerLevel);
+
+            // Register PlaceholderAPI expansion
+            if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                new Placeholders(this).register();
+                debugLog("PlaceholderAPI expansion enabled!");
+            }
 
             // Register bStats
             int pluginId = 20587;

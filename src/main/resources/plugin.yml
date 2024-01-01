@@ -3,8 +3,11 @@ author: xIdentified
 version: '${project.version}'
 main: me.xidentified.archgpt.ArchGPT
 api-version: '1.20'
+
 depend:
   - Citizens
+softdepend:
+  - PlaceholderAPI
 
 libraries:
   - net.kyori:adventure-api:4.14.0

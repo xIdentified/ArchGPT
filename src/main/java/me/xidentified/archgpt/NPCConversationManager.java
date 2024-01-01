@@ -41,7 +41,7 @@ public class NPCConversationManager {
     @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
     private final Map<UUID, AtomicInteger> conversationTokenCounters; //Ensures conversation doesn't go over token limit
     @Getter private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
-    public final Map<UUID, Long> npcCommentCooldown = new HashMap<>(); //Stores cooldown for NPC greeting to passing player
+    public final Map<UUID, Long> npcCommentCooldown = new ConcurrentHashMap<>(); //Stores cooldown for NPC greeting to passing player
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     public final Map<UUID, List<Component>> npcChatStatesCache;
     protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
@@ -81,7 +81,7 @@ public class NPCConversationManager {
         messages.add(systemMessage);
 
         // Gather environmental and player context
-        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(player);
+        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(plugin, player);
         PlayerContextProvider playerContext = new PlayerContextProvider(player);
         String environmentalContext = envContext.getFormattedContext(PlainTextComponentSerializer.plainText().serialize(prompt));
         String playerSpecificContext = playerContext.getFormattedContext("");
@@ -112,7 +112,7 @@ public class NPCConversationManager {
         playerNPCMap.put(playerUUID, npc);
 
         // Gather environmental and player context
-        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(player);
+        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(plugin, player);
         PlayerContextProvider playerContext = new PlayerContextProvider(player);
         String defaultPrompt = configHandler.getDefaultPrompt();
         String npcSpecificPrompt = npcSection.getString(npcName, "");
@@ -135,7 +135,8 @@ public class NPCConversationManager {
         }
 
         plugin.sendMessage(player, Messages.CONVERSATION_STARTED.formatted(
-                Placeholder.unparsed("npc", npcName)
+                Placeholder.unparsed("npc", npcName),
+                Placeholder.unparsed("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase")))
                 ));
 
         conversationTimeoutManager.startConversationTimeout(playerUUID);
@@ -183,6 +184,11 @@ public class NPCConversationManager {
         Location npcLocation = npc.getEntity().getLocation();
         Location playerLocation = player.getLocation();
 
+        // Validate locations
+        if (!isValidLocation(npcLocation) || !isValidLocation(playerLocation)) {
+            return false;
+        }
+
         // Check if the player is within range of the NPC
         if (npcLocation.distance(playerLocation) > ArchGPTConstants.MAX_DISTANCE_LINE_OF_SIGHT) {
             return false;
@@ -194,6 +200,10 @@ public class NPCConversationManager {
 
         // If the ray trace didn't hit anything, or it hit the player, then there's a direct line of sight
         return rayTrace == null || rayTrace.getHitEntity() == player;
+    }
+
+    private boolean isValidLocation(Location location) {
+        return location != null && Double.isFinite(location.getX()) && Double.isFinite(location.getY()) && Double.isFinite(location.getZ());
     }
 
     public boolean canComment(NPC npc) {
@@ -265,7 +275,7 @@ public class NPCConversationManager {
 
 
     public boolean handleCancelCommand(Player player, UUID playerUUID, String message) {
-        if (message.equalsIgnoreCase("cancel")) {
+        if (message.equalsIgnoreCase(plugin.getConfig().getString("conversation_end_phrase", "cancel"))) {
             plugin.sendMessage(player, Messages.CONVERSATION_ENDED);
             endConversation(playerUUID);
             return true;

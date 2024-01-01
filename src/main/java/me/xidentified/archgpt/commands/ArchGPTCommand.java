@@ -28,6 +28,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 plugin.reloadConfig();
+                // TODO: Unregister and register listeners
                 plugin.sendMessage(sender, Messages.RELOAD_SUCCESS);
                 return true;
             }

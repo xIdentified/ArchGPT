@@ -21,12 +21,24 @@ default_prompt: "You are an NPC in Minecraft: "
 npcs:
   npc_name: "This is an example prompt for the NPC."
 
+# Gives your NPCs more accurate context to their location in the world, I recommend at least adding spawn
+points_of_interest:
+  world:
+    Spawn: "0,64,0"
+    Mine: "200,64,50"
+    Village: "150,70,150"
+  world_nether:
+    Castle: "75,80,-100"
+
 # You can name colors using default codes like "&6" or any valid hex color like "#FFAA00"
 chat_colors:
   npc_name: "#37B5FC"
   player_name: "&a"
   npc_message: "&7"
   player_message: "&f"
+
+# Word players enter to end their conversation
+conversation_end_phrase: "cancel"
 
 storage:
   type: 'yaml' # Options: yaml, sqlite, mysql

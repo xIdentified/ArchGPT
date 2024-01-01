@@ -1,22 +1,29 @@
 package me.xidentified.archgpt.context;
 
+import me.xidentified.archgpt.ArchGPT;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.*;
-import org.bukkit.inventory.ItemStack;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EnvironmentalContextProvider {
+    private final ArchGPT plugin;
     private final Player player;
+    private final ConcurrentHashMap<String, ConcurrentHashMap<String, String>> pointsOfInterest; // WorldName, POI Name, Location
 
-    public EnvironmentalContextProvider(Player player) {
+    public EnvironmentalContextProvider(ArchGPT plugin, Player player) {
+        this.plugin = plugin;
         this.player = player;
+        this.pointsOfInterest = new ConcurrentHashMap<>();
+        loadPointsOfInterest();
     }
 
     public String getFormattedContext(String npcPrompt) {
@@ -25,9 +32,45 @@ public class EnvironmentalContextProvider {
         String weather = getWeather();
         String biome = getBiome();
         String entityContext = getNearbyEntitiesContext();
+        String poiContext = getPointsOfInterestContext();
 
-        return String.format("%s. The current time is %s and the weather is %s. The biome (environment) you are in is %s. %s. Your current location is %s.",
-                npcPrompt, timeOfDay, weather, biome, entityContext, npcLocationContext);
+        return String.format("%s. The current time is %s and the weather is %s. " +
+                        "The biome (environment) you are in is %s. %s. " +
+                        "Your current location is %s. %s",
+                npcPrompt, timeOfDay, weather, biome,
+                entityContext, npcLocationContext, poiContext);
+    }
+
+    private void loadPointsOfInterest() {
+        FileConfiguration config = plugin.getConfig();
+        ConfigurationSection poiSection = config.getConfigurationSection("points_of_interest");
+        if (poiSection != null) {
+            poiSection.getKeys(false).forEach(worldName -> {
+                ConcurrentHashMap<String, String> worldPOIs = new ConcurrentHashMap<>();
+                ConfigurationSection worldSection = poiSection.getConfigurationSection(worldName);
+                if (worldSection != null) {
+                    worldSection.getKeys(false).forEach(poiName -> {
+                        String location = worldSection.getString(poiName);
+                        worldPOIs.put(poiName, location);
+                    });
+                    pointsOfInterest.put(worldName, worldPOIs);
+                }
+            });
+        }
+    }
+
+    public String getPointsOfInterestContext() {
+        StringBuilder poiContext = new StringBuilder();
+        ConcurrentHashMap<String, String> worldPOIs = pointsOfInterest.get(player.getWorld().getName());
+
+        if (worldPOIs != null) {
+            for (ConcurrentHashMap.Entry<String, String> entry : worldPOIs.entrySet()) {
+                poiContext.append("The ").append(entry.getKey())
+                        .append(" is at ").append(entry.getValue()).append(". ");
+            }
+        }
+
+        return poiContext.toString();
     }
 
     public String getTimeOfDay() {
