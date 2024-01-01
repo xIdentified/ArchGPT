@@ -18,6 +18,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
@@ -338,9 +339,10 @@ public class NPCConversationManager {
             messages.add(messageJson);
         }
 
-        // Add the player's current message
+        // Add the player's current message, with parsed placeholders
         JsonObject userMessageJson = new JsonObject();
         String sanitizedPlayerMessage = StringEscapeUtils.escapeJson(PlainTextComponentSerializer.plainText().serialize(playerMessage));
+
         userMessageJson.addProperty("role", "user");
         userMessageJson.addProperty("content", sanitizedPlayerMessage);
         messages.add(userMessageJson);

@@ -12,8 +12,6 @@ public class ArchGPTConstants {
 
     public static final int MAX_CONVERSATION_STATE_SIZE = 8;
 
-    public static final int MAX_CHAT_LENGTH = 750;
-
     public static final long GREETING_COOLDOWN_MS = 300000; // 5 min default
 
     public static final long CHAT_COOLDOWN_MS = 3000;

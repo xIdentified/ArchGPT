@@ -43,7 +43,7 @@ public class NPCEventListener implements Listener {
             Player player = event.getClicker();
             NPC npc = event.getNPC();
 
-            if (!configHandler.isNPCConfigured((npc.getName()))) {
+            if (configHandler.getNpcPrompt(npc.getName(), player) == null) {
                 // NPC is not in the config, exit method
                 return;
             }
@@ -145,6 +145,7 @@ public class NPCEventListener implements Listener {
                     }
                 }
             }
+            return; // Exit to stop greeting from sending again
         }
 
         // If not in conversation, check if any NPC wants to greet the player
@@ -169,6 +170,8 @@ public class NPCEventListener implements Listener {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 // Utilize the sendNPCMessage method to send the greeting
                                 conversationManager.sendNPCMessage(player, npc.getUniqueId(), npc.getName(), greeting);
+                                // Hologram appears prompting player to interact with them
+                                plugin.getHologramManager().showInteractionHologram(npc, player);
                                 // Update the cooldown for the NPC
                                 conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
                             });

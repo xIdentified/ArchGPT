@@ -3,6 +3,7 @@ package me.xidentified.archgpt;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.logging.Level;
@@ -44,7 +45,7 @@ public class ArchGPTConfig {
         defaultPrompt = config.getString("default_prompt", "Hello!");
         chatGptEngine = config.getString("chatgpt_engine", "gpt-3.5-turbo-1106");
         minCharLength = config.getInt("min_char_length", 10);
-        maxResponseLength = config.getInt("max_response_length", 200);
+        maxResponseLength = config.getInt("max_response_length", 200); // in tokens
         chatCooldownMillis = config.getLong("chat_cooldown", 3000);
         npcNameColor = config.getString("chat_colors.npc_name");
         playerNameColor = config.getString("chat_colors.player_name");
@@ -68,10 +69,23 @@ public class ArchGPTConfig {
         plugin.saveDefaultConfig();
     }
 
-    public boolean isNPCConfigured(String npcName) {
+    public String getNpcPrompt(String npcName, Player player) {
         FileConfiguration config = plugin.getConfig();
-        // Assuming you have a configuration section called 'npcs' that lists all NPCs
-        return config.getConfigurationSection("npcs").contains(npcName);
+        String npcSpecificPrompt = config.getString("npcs." + npcName);
+        String prompt = defaultPrompt; // Use the default prompt as a fallback
+
+        // Check if there's a specific prompt for this NPC and use it if available
+        if (npcSpecificPrompt != null && !npcSpecificPrompt.isEmpty()) {
+            prompt = npcSpecificPrompt;
+        }
+
+        plugin.getLogger().info("Original Prompt: " + prompt);
+
+        // Replace PAPI placeholders in the prompt
+        String parsedPrompt = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, prompt);
+        plugin.getLogger().info("Parsed Prompt: " + parsedPrompt);
+
+        return parsedPrompt;
     }
 
     public void printConfigToConsole() {

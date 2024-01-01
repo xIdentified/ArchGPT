@@ -38,10 +38,6 @@ public class Placeholders extends PlaceholderExpansion {
             return plugin.getConfig().getString("placeholders.placeholder1", "default1");
         }
 
-        if(params.equalsIgnoreCase("placeholder2")) {
-            return plugin.getConfig().getString("placeholders.placeholder2", "default2");
-        }
-
         return null; // Placeholder is unknown by the Expansion
     }
 }

@@ -95,6 +95,11 @@ public class ChatRequestHandler {
             plugin.debugLog("Final Processed Response: " + assistantResponseText);
             return CompletableFuture.completedFuture(assistantResponseText);
 
+        }).exceptionally(ex -> {
+                    // Handle exceptions - log the error and end the conversation
+                    plugin.getLogger().severe("Error processing ChatGPT request: " + ex.getMessage());
+                    plugin.getManager().endConversation(playerUUID);
+                    return null;
         }).thenApply(assistantResponseText -> {
             // Process the response and prepare final result
             Component responseComponent = Component.text(assistantResponseText.trim());
@@ -145,10 +150,16 @@ public class ChatRequestHandler {
     private Component sanitizeAPIResponse(Component chatGptResponseComponent) {
         String response = PlainTextComponentSerializer.plainText().serialize(chatGptResponseComponent);
 
-        // Convert item/biome names like SNOWY_TAIGA to "snowy taiga"
+        // Process each word, skipping placeholders
         response = Arrays.stream(response.split(" "))
                 .map(word -> {
-                    if (word.contains("_")) {
+                    // Check if the word is a placeholder
+                    if (word.startsWith("%") && word.endsWith("%")) {
+                        return word;
+                    }
+
+                    // Process non-placeholder words
+                    else if (word.contains("_")) {
                         return Arrays.stream(word.split("_"))
                                 .map(this::capitalizeFirstLetter)
                                 .collect(Collectors.joining(" "));
@@ -161,6 +172,7 @@ public class ChatRequestHandler {
         response = capitalizeSentences(response);
         response = response.replace(" i ", " I ");
         response = response.replace(" i'm ", " I'm ");
+
         return Component.text(response);
     }
 

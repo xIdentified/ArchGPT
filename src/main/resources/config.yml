@@ -37,7 +37,9 @@ chat_colors:
   npc_message: "&7"
   player_message: "&f"
 
-# Word players enter to end their conversation
+# Popup dialogue that prompts player to begin conversation. Leave empty to disable.
+conversation_start_popup: "Right-click to talk"
+# Phrase to end conversations with, required.
 conversation_end_phrase: "cancel"
 
 storage:

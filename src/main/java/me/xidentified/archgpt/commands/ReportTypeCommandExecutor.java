@@ -28,6 +28,11 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
             return true;
         }
 
+        if (!plugin.getManager().isInActiveConversation(player.getUniqueId())) {
+            plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
+            return true;
+        }
+
         if ("reportnpcmessage".equalsIgnoreCase(cmd.getName())) {
             // Extract the uniqueMessageIdentifier from args
             String uniqueMessageIdentifier = args.length > 0 ? args[0] : null;

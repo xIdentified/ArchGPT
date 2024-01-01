@@ -22,6 +22,7 @@ import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.ComponentLike;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -51,6 +52,7 @@ public class ArchGPT extends JavaPlugin {
     private TranslationService translationService;
     private BukkitAudiences audiences;
     private Translations translations;
+    private NPCConversationManager manager;
 
     @Override
     public void onEnable() {
@@ -89,7 +91,7 @@ public class ArchGPT extends JavaPlugin {
             this.translationService = new TranslationService(libreTranslateAPIEndpoint, this.getLogger());
 
             // Register the event listeners
-            NPCConversationManager manager = new NPCConversationManager(this, configHandler);
+            this.manager = new NPCConversationManager(this, configHandler);
             getServer().getPluginManager().registerEvents(new NPCEventListener(this, manager, configHandler), this);
             getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
 
@@ -164,21 +166,23 @@ public class ArchGPT extends JavaPlugin {
 
     @Override
     public void onDisable() {
-
         // Close database connection
         if (this.reportManager != null) {
             this.reportManager.closeResources();
         }
 
-        // Remove all holograms (armor stands) created by the plugin
-        if (this.hologramManager != null) {
-            this.hologramManager.removeAllHolograms();
+        // Remove all holograms
+        if (hologramManager != null) {
+            hologramManager.getAllHolograms().forEach(ArmorStand::remove);
+            hologramManager.getPlayerHolograms().values().forEach(ArmorStand::remove);
+            hologramManager.getAllHolograms().clear();
+            hologramManager.getPlayerHolograms().clear();
         }
 
         // Close translations framework
+        audiences.close();
         translations.close();
         TranslationsFramework.disable();
-        audiences.close();
 
         // Unregister events
         HandlerList.unregisterAll();
