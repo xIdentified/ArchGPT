@@ -38,7 +38,6 @@ public class ConversationTimeoutManager {
                     plugin.getConversationTokenCounters().remove(playerUUID);
 
                     plugin.getHologramManager().removePlayerHologram(playerUUID);
-                    plugin.getHologramManager().removeHologram();
                 }
             }
         }, conversationTimeoutMillis, TimeUnit.MILLISECONDS);

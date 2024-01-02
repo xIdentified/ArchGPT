@@ -162,7 +162,6 @@ public class NPCConversationManager {
 
         conversationTimeoutManager.cancelConversationTimeout(playerUUID);
         plugin.getHologramManager().removePlayerHologram(playerUUID);
-        plugin.getHologramManager().removeHologram();
     }
 
     public void updateConversationTokenCounter(UUID playerUUID) {
@@ -302,7 +301,7 @@ public class NPCConversationManager {
                 NPC npc = playerNPCMap.get(playerUUID);
                 if (npc == null) return;
                 if (npc.isSpawned()) {
-                    hologramManager.removeHologram();
+                    hologramManager.removePlayerHologram(playerUUID);
                     Location npcLocation = npc.getEntity().getLocation();
                     String hologramText = "...";
                     hologramManager.createHologram(playerUUID, npcLocation.add(0, 1, 0), hologramText);
@@ -375,7 +374,7 @@ public class NPCConversationManager {
                                     sendNPCMessage(player, playerUUID, npcName, response);
                                     npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
                                 }
-                                hologramManager.removeHologram();
+                                hologramManager.removePlayerHologram(playerUUID);
                             }
                         }.runTaskLater(plugin, 20L);
                         updateConversationTokenCounter(playerUUID);

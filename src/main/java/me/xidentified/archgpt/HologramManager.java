@@ -26,30 +26,45 @@ public class HologramManager {
     private BukkitRunnable animationTask;
     private final List<ArmorStand> allHolograms = new CopyOnWriteArrayList<>();
     private final Map<UUID, ArmorStand> playerHolograms = new ConcurrentHashMap<>();
+    private final Map<UUID, BukkitRunnable> animationTasks = new ConcurrentHashMap<>();
 
     public HologramManager(JavaPlugin plugin) {
         this.plugin = plugin;
         startCleanupTask();
     }
 
-    // Method to show the hologram
+    /**
+     * Displays a hologram for first time players instructing them on how to interact with an NPC
+     *
+     * @param npc    The NPC for which the hologram is being created.
+     * @param player The player interacting with the NPC.
+     */
     public void showInteractionHologram(NPC npc, Player player) {
-        Location npcLocation = npc.getEntity().getLocation();
+        // if (!player.hasPlayedBefore) {
+        String hologramText = plugin.getConfig().getString("conversation_start_popup");
+        if (hologramText != null) {
+            Location hologramLocation = getHologramLocation(npc.getEntity().getLocation());
+            UUID playerUUID = player.getUniqueId();
 
-        // Calculate the location above the NPC for the hologram
-        Location hologramLocation = getHologramLocation(npcLocation);
+            // Create the hologram at the desired location
+            createHologram(playerUUID, hologramLocation, hologramText);
 
-        // Create and show the hologram
-        createHologram(player.getUniqueId(), hologramLocation, plugin.getConfig().getString("conversation_start_popup"));
+            // Scroll text if it's longer than the character limit
+            int characterLimit = 12;
+            if (hologramText.length() > characterLimit) {
+                createScrollingHologram(playerUUID, hologramText, characterLimit);
+            }
 
-        // Optionally, remove the hologram after a delay
-        Bukkit.getScheduler().runTaskLater(plugin, () -> removePlayerHologram(player.getUniqueId()), 100L); // 100 ticks delay
+            // Remove the hologram after a delay
+            Bukkit.getScheduler().runTaskLater(plugin, () -> removePlayerHologram(playerUUID), 200L); // 10s delay
+        }
     }
+
 
     public Location getHologramLocation(Location npcLocation) {
         // The offset in front of the NPC where the hologram will appear
-        double frontOffset = 1.0;
-        double heightOffset = npcLocation.getY() + 1.5;
+        double frontOffset = 0.2;
+        double heightOffset = npcLocation.getY() - 0.5;
 
         // Get the direction vector of the NPC's location
         Vector direction = npcLocation.getDirection();
@@ -84,6 +99,45 @@ public class HologramManager {
         playerHolograms.put(playerUUID, armorStand);
     }
 
+    /**
+     * Creates a scrolling hologram that displays text in a scrolling manner.
+     *
+     * @param playerUUID  The UUID of the player for whom the hologram is being created.
+     * @param fullText    The full text to be displayed in a scrolling fashion.
+     * @param characterLimit The number of characters to display at once.
+     */
+    public void createScrollingHologram(UUID playerUUID, String fullText, int characterLimit) {
+        ArmorStand hologram = playerHolograms.get(playerUUID);
+        if (hologram == null) return;
+
+        // Create a looped text by appending the full text to itself
+        String loopedText = fullText + " " + fullText;
+
+        BukkitRunnable scrollingTask = new BukkitRunnable() {
+            int startIndex = 0;
+
+            @Override
+            public void run() {
+                // Calculate endIndex, ensuring it doesn't exceed the length of loopedText
+                int endIndex = startIndex + characterLimit;
+                if (endIndex > loopedText.length()) {
+                    endIndex = endIndex % loopedText.length();
+                }
+
+                String displayText = loopedText.substring(startIndex, Math.min(endIndex, loopedText.length()));
+
+                // Display the substring of loopedText
+                hologram.customName(Component.text(displayText));
+
+                // Update startIndex for the next iteration
+                startIndex = (startIndex + 1) % fullText.length(); // Reset after one full cycle
+            }
+        };
+
+        scrollingTask.runTaskTimer(plugin, 0L, 5L);
+        animationTasks.put(playerUUID, scrollingTask);
+    }
+
     public void animateHologram() {
         String[] animations = {".", "..", "..."};
 
@@ -97,48 +151,47 @@ public class HologramManager {
         animationTask.runTaskTimer(plugin, 0L, 20L);
     }
 
-    public void stopAnimation() {
-        if (animationTask != null) {
-            animationTask.cancel();
+    /**
+     * Stops any ongoing animation associated with the specified player's hologram.
+     *
+     * @param playerUUID The UUID of the player whose hologram animation should be stopped.
+     */
+    public void stopAnimation(UUID playerUUID) {
+        BukkitRunnable task = animationTasks.get(playerUUID);
+        if (task != null) {
+            task.cancel();
+            animationTasks.remove(playerUUID);
         }
     }
 
-    public void removeHologram() {
-        if (armorStand != null) {
-            // Schedule the removal operation to be run on the main server thread
+    /**
+     * Removes a hologram associated with a specific player.
+     *
+     * @param playerUUID The UUID of the player whose hologram should be removed.
+     */
+    public void removePlayerHologram(UUID playerUUID) {
+        ArmorStand hologram = playerHolograms.get(playerUUID);
+        if (hologram != null && hologram.isValid()) {
             Bukkit.getScheduler().runTask(plugin, () -> {
-                stopAnimation();
-                armorStand.remove();
-                armorStand = null;
+                stopAnimation(playerUUID);
+                hologram.remove();
+                playerHolograms.remove(playerUUID);
+                allHolograms.remove(hologram);
             });
         }
     }
 
-    //Removes player specific holograms
-    public void removePlayerHologram(UUID playerUUID) {
-        if (playerHolograms.containsKey(playerUUID)) {
-            ArmorStand hologram = playerHolograms.get(playerUUID);
-            hologram.remove();
-            playerHolograms.remove(playerUUID);
-            allHolograms.remove(hologram);
-        }
-    }
-
+    // Starts a cleanup task that periodically checks for and removes expired holograms.
     private void startCleanupTask() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            // Collect holograms that need to be removed
-            List<ArmorStand> toRemove = new ArrayList<>();
-
-            for (ArmorStand hologram : allHolograms) {
+            allHolograms.removeIf(hologram -> {
                 if (hologram.getTicksLived() > ArchGPTConstants.MAX_HOLOGRAM_LIFETIME) {
                     hologram.remove();
-                    toRemove.add(hologram);
+                    return true;
                 }
-            }
-
-            // Remove the collected holograms from the list
-            allHolograms.removeAll(toRemove);
-        }, 600L, 600L);  // run every 30 seconds
+                return false;
+            });
+        }, 600L, 600L);
     }
 
 }

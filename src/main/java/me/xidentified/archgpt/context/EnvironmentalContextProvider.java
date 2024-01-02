@@ -35,7 +35,7 @@ public class EnvironmentalContextProvider {
         String poiContext = getPointsOfInterestContext();
 
         return String.format("%s. The current time is %s and the weather is %s. " +
-                        "The biome (environment) you are in is %s. %s. " +
+                        "The biome (environment) you are in is %s. %s " +
                         "Your current location is %s. %s",
                 npcPrompt, timeOfDay, weather, biome,
                 entityContext, npcLocationContext, poiContext);
@@ -169,9 +169,9 @@ public class EnvironmentalContextProvider {
         }
 
         if (isOutside && isUnderLeaves) {
-            return "standing outside under the shade of trees";
+            return "outside under the shade of trees";
         } else if (isOutside) {
-            return "standing outside in the open";
+            return "outside in the open";
         } else if (isUnderGlass) {
             return "inside a glass-enclosed structure";
         } else {

@@ -29,13 +29,13 @@ public class PlayerContextProvider {
             int mobsKilled = player.getStatistic(Statistic.MOB_KILLS);
 
             if (!player.hasPlayedBefore()) {
-                return "It is their first time on the server!";
+                return "It is their first time playing on the server!";
             } else if (hoursPlayed < 8 || mobsKilled < 20 ) {
-                return "They are a newbie to the server!";
+                return "They seem like a newbie to the server!";
             } else if (hoursPlayed < 50 || mobsKilled > 50 ) {
-                return "They are an experienced player!";
+                return "They seem like an experienced player.";
             } else {
-                return "They are a veteran of the server!";
+                return "They seem like a veteran of the server.";
             }
         } catch (IllegalArgumentException e) {
             Bukkit.getLogger().severe(e.toString());

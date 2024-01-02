@@ -170,10 +170,13 @@ public class NPCEventListener implements Listener {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 // Utilize the sendNPCMessage method to send the greeting
                                 conversationManager.sendNPCMessage(player, npc.getUniqueId(), npc.getName(), greeting);
-                                // Hologram appears prompting player to interact with them
-                                plugin.getHologramManager().showInteractionHologram(npc, player);
                                 // Update the cooldown for the NPC
                                 conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
+
+                                // For new players, a hologram appears prompting them to right-click the NPC to interact
+                                if (!player.hasPlayedBefore()) {
+                                    plugin.getHologramManager().showInteractionHologram(npc, player);
+                                }
                             });
                         }
                         npcsProcessingGreeting.remove(npc.getUniqueId());
