@@ -42,6 +42,7 @@
                             <artifactSet>
                                 <includes>
                                     <include>de.cubbossa:Translations</include>
+                                    <include>com.zaxxer:HikariCP</include>
                                     <include>org.bstats</include>>
                                 </includes>
                             </artifactSet>
@@ -49,6 +50,10 @@
                                 <relocation>
                                     <pattern>de.cubbossa.translations</pattern>
                                     <shadedPattern>me.xidentified.archgpt.libs.translations</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.zaxxer.hikari</pattern>
+                                    <shadedPattern>me.xidentified.archgpt.shaded.hikari</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

@@ -2,6 +2,7 @@ package me.xidentified.archgpt;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -72,17 +73,22 @@ public class ArchGPTConfig {
     public String getNpcPrompt(String npcName, Player player) {
         FileConfiguration config = plugin.getConfig();
 
-        // Fetch the default prompt from the config
+        // Fetch default prompt from config
         String defaultPrompt = config.getString("default_prompt", "You are an intelligent NPC on a Minecraft Java server.");
 
-        // Fetch the specific prompt for this NPC from the config
+        // Fetch prompt for NPC from config
         String npcSpecificPrompt = config.getString("npcs." + npcName, "");
 
-        // Combine the default prompt with the NPC-specific prompt
+        // Combine the default prompt with the NPC prompt
         String combinedPrompt = defaultPrompt + (npcSpecificPrompt.isEmpty() ? "" : " " + npcSpecificPrompt);
 
-        // Parse PAPI placeholders in the combined prompt
-        return me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, combinedPrompt);
+        // If PAPI is installed parse the prompt
+        if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            return me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, combinedPrompt);
+        }
+
+        // Or just return the combined prompt
+        return combinedPrompt;
     }
 
     public void printConfigToConsole() {

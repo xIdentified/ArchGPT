@@ -44,6 +44,7 @@ public class ReportGUI implements InventoryHolder, Listener {
         List<Report> reports = plugin.getReportManager().listReports();
 
         if (reports.isEmpty()) {
+            admin.closeInventory();
             plugin.sendMessage(admin, Messages.REPORT_NONE_TO_DISPLAY);
             return;
         }
@@ -105,8 +106,14 @@ public class ReportGUI implements InventoryHolder, Listener {
             Integer reportId = reportGUI.getSlotToReportIdMap().get(clickedSlot);
             if (reportId != null) {
                 plugin.getReportManager().deleteReport(reportId);
-                reportGUI.openGUI((Player) event.getWhoClicked()); // Refresh the GUI
-                plugin.sendMessage(event.getWhoClicked(), Messages.REPORT_DELETED);
+                List<Report> updatedReports = plugin.getReportManager().listReports();
+                if (updatedReports.isEmpty()) {
+                    event.getWhoClicked().closeInventory();
+                    plugin.sendMessage(event.getWhoClicked(), Messages.REPORT_NONE_TO_DISPLAY);
+                } else {
+                    reportGUI.openGUI((Player) event.getWhoClicked());
+                    plugin.sendMessage(event.getWhoClicked(), Messages.REPORT_DELETED);
+                }
             }
         }
     }

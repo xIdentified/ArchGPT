@@ -2,6 +2,7 @@ package me.xidentified.archgpt.storage.dao;
 
 import me.xidentified.archgpt.storage.model.Conversation;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -14,8 +15,14 @@ import java.util.UUID;
 public class SQLiteConversationDAO implements ConversationDAO {
     private final String url;
 
-    public SQLiteConversationDAO(String filePath) {
-        this.url = "jdbc:sqlite:" + filePath;
+    public SQLiteConversationDAO(File sqliteFile) {
+        // Ensure the directory for the SQLite file exists
+        if (!sqliteFile.getParentFile().exists()) {
+            sqliteFile.getParentFile().mkdirs();
+        }
+
+        // Construct the JDBC URL using the file path
+        this.url = "jdbc:sqlite:" + sqliteFile.getAbsolutePath();
         initializeDatabase();
     }
 

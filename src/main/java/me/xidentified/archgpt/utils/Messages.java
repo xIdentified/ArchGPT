@@ -54,7 +54,8 @@ public class Messages {
             .withDefault("<negative>Please click one of the report types above to continue.")
             .build();
     public static final Message REPORT_SUBMITTED = new MessageBuilder("report.submitted")
-            .withDefault("<positive>Thank you, your report has been submitted. Type 'cancel' to end the conversation.")
+            .withDefault("<positive>Thank you, your report has been submitted. Type '<cancel>' to end the conversation.")
+            .withPlaceholder("cancel")
             .build();
     public static final Message REPORT_DELETED = new MessageBuilder("report.deleted")
             .withDefault("<positive>Report successfully deleted.")

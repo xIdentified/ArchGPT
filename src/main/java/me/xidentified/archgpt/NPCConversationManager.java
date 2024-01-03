@@ -272,7 +272,9 @@ public class NPCConversationManager {
             Report report = new Report(newReportId, player.getName(), npc.getName(), reportType, feedback, npcLastMessage, LocalDateTime.now());
             plugin.getReportManager().addReport(report);
             plugin.getReportManager().exitReportingState(playerUUID);
-            plugin.sendMessage(player, Messages.REPORT_SUBMITTED);
+            plugin.sendMessage(player, Messages.REPORT_SUBMITTED.formatted(
+                    Placeholder.unparsed("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase")))
+            ));
             event.setCancelled(true);
             return true;
         }

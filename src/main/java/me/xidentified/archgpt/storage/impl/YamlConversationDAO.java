@@ -18,7 +18,11 @@ public class YamlConversationDAO implements ConversationDAO {
     private final YamlConfiguration config;
 
     public YamlConversationDAO(File pluginFolder) {
-        this.dataFile = new File(pluginFolder, "conversations.yml");
+        File storageFolder = new File(pluginFolder, "storage");
+        if (!storageFolder.exists()) {
+            storageFolder.mkdirs();
+        }
+        this.dataFile = new File(storageFolder, "conversations.yml");
         if (!dataFile.exists()) {
             try {
                 dataFile.createNewFile();
@@ -28,6 +32,7 @@ public class YamlConversationDAO implements ConversationDAO {
         }
         this.config = YamlConfiguration.loadConfiguration(dataFile);
     }
+
 
     @Override
     public synchronized void saveConversation(Conversation conversation) {
