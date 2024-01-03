@@ -71,21 +71,18 @@ public class ArchGPTConfig {
 
     public String getNpcPrompt(String npcName, Player player) {
         FileConfiguration config = plugin.getConfig();
-        String npcSpecificPrompt = config.getString("npcs." + npcName);
-        String prompt = defaultPrompt; // Use the default prompt as a fallback
 
-        // Check if there's a specific prompt for this NPC and use it if available
-        if (npcSpecificPrompt != null && !npcSpecificPrompt.isEmpty()) {
-            prompt = npcSpecificPrompt;
-        }
+        // Fetch the default prompt from the config
+        String defaultPrompt = config.getString("default_prompt", "You are an intelligent NPC on a Minecraft Java server.");
 
-        plugin.getLogger().info("Original Prompt: " + prompt);
+        // Fetch the specific prompt for this NPC from the config
+        String npcSpecificPrompt = config.getString("npcs." + npcName, "");
 
-        // Replace PAPI placeholders in the prompt
-        String parsedPrompt = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, prompt);
-        plugin.getLogger().info("Parsed Prompt: " + parsedPrompt);
+        // Combine the default prompt with the NPC-specific prompt
+        String combinedPrompt = defaultPrompt + (npcSpecificPrompt.isEmpty() ? "" : " " + npcSpecificPrompt);
 
-        return parsedPrompt;
+        // Parse PAPI placeholders in the combined prompt
+        return me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, combinedPrompt);
     }
 
     public void printConfigToConsole() {

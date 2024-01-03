@@ -18,11 +18,8 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
@@ -46,7 +43,6 @@ public class NPCConversationManager {
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     public final Map<UUID, List<Component>> npcChatStatesCache;
     protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
-    private ConfigurationSection npcSection;
 
     public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -56,16 +52,21 @@ public class NPCConversationManager {
         this.playerCooldowns = new ConcurrentHashMap<>();
         this.conversationTokenCounters = new ConcurrentHashMap<>();
         this.conversationTimeoutManager = new ConversationTimeoutManager(plugin);
-        loadConfigurations();
     }
 
-    private void loadConfigurations() {
-        // Configuration values that will be loaded once
-        FileConfiguration config = plugin.getConfig();
-        npcSection = config.getConfigurationSection("npcs");
+    public String getCombinedContext(String npcName, Player player) {
+        // Fetch specific NPC prompt or use the default if none is set
+        String npcPrompt = npcName.isEmpty() ? configHandler.getDefaultPrompt() : configHandler.getNpcPrompt(npcName, player);
+
+        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(plugin, player);
+        PlayerContextProvider playerContext = new PlayerContextProvider(player);
+        String environmentalContext = envContext.getFormattedContext(npcPrompt);
+        String playerSpecificContext = playerContext.getFormattedContext("");
+
+        return environmentalContext + " " + playerSpecificContext;
     }
 
-    public CompletableFuture<Component> getGreeting(Component prompt, Player player) {
+    public CompletableFuture<Component> getGreeting(Player player, NPC npc) {
         // Prepare the API request
         JsonObject requestBodyJson = new JsonObject();
         String chatGptEngine = configHandler.getChatGptEngine();
@@ -76,60 +77,44 @@ public class NPCConversationManager {
         JsonArray messages = new JsonArray();
 
         // Add system prompt message
-        JsonObject systemMessage = new JsonObject();
-        systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", "You are an intelligent NPC capable of conversational interaction.");
-        messages.add(systemMessage);
+        messages.add(createSystemMessage());
 
-        // Gather environmental and player context
-        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(plugin, player);
-        PlayerContextProvider playerContext = new PlayerContextProvider(player);
-        String environmentalContext = envContext.getFormattedContext(PlainTextComponentSerializer.plainText().serialize(prompt));
-        String playerSpecificContext = playerContext.getFormattedContext("");
-
-        // Combine contexts
-        String combinedContext = environmentalContext + " " + playerSpecificContext;
+        // Get combined context for the NPC with the specific greeting
+        String combinedContext = getCombinedContext(npc.getName(), player);
+        String greetingContext = combinedContext + " A player named " + player.getName() + " approaches you. How do you greet them?";
 
         // Add user prompt message with combined context
         JsonObject userMessage = new JsonObject();
         userMessage.addProperty("role", "user");
-        userMessage.addProperty("content", combinedContext);
+        userMessage.addProperty("content", greetingContext);
         messages.add(userMessage);
 
-        // Add messages to the request body
+        // Add messages to the request body and process the request
         requestBodyJson.add("messages", messages);
-
-        // Process the request
-        return getChatRequestHandler()
-                .processChatGPTRequest(player, requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
+        return getChatRequestHandler().processChatGPTRequest(player, requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
                 .thenApply(responseObject -> (Component) responseObject);
+    }
+
+    private JsonObject createSystemMessage() {
+        JsonObject systemMessage = new JsonObject();
+        systemMessage.addProperty("role", "system");
+        systemMessage.addProperty("content", "You are an intelligent NPC capable of conversational interaction.");
+        return systemMessage;
     }
 
     public void startConversation(Player player, NPC npc) {
         UUID playerUUID = player.getUniqueId();
         String npcName = npc.getName();
 
-        // Player is not in an ongoing conversation, start a new one
-        playerNPCMap.put(playerUUID, npc);
+        // Get combined context for the NPC
+        String combinedContext = getCombinedContext(npcName, player);
 
-        // Gather environmental and player context
-        EnvironmentalContextProvider envContext = new EnvironmentalContextProvider(plugin, player);
-        PlayerContextProvider playerContext = new PlayerContextProvider(player);
-        String defaultPrompt = configHandler.getDefaultPrompt();
-        String npcSpecificPrompt = npcSection.getString(npcName, "");
-        String npcPrompt = defaultPrompt + (npcSpecificPrompt.isEmpty() ? "" : " " + npcSpecificPrompt);
-        String environmentalContext = envContext.getFormattedContext(npcPrompt);
-        String playerSpecificContext = playerContext.getFormattedContext("");
-
-        // Combine contexts
-        String combinedContext = environmentalContext + " " + playerSpecificContext;
-
+        // Prepare initial conversation state
         Component npcIntroComponent = Component.text(combinedContext);
         List<Component> initialConversationState = new ArrayList<>();
         initialConversationState.add(npcIntroComponent);
 
-        //plugin.debugLog("Initial Conversation State: " + initialConversationState);
-
+        // Store conversation state and start conversation
         npcChatStatesCache.put(playerUUID, initialConversationState);
         synchronized (plugin.getActiveConversations()) {
             plugin.getActiveConversations().put(playerUUID, true);
@@ -138,15 +123,8 @@ public class NPCConversationManager {
         plugin.sendMessage(player, Messages.CONVERSATION_STARTED.formatted(
                 Placeholder.unparsed("npc", npcName),
                 Placeholder.unparsed("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase")))
-                ));
-
+        ));
         conversationTimeoutManager.startConversationTimeout(playerUUID);
-
-        if (!npcSection.contains(npcName)) {
-            synchronized (plugin.getActiveConversations()) {
-                plugin.getActiveConversations().remove(playerUUID);
-            }
-        }
     }
 
     public void endConversation(UUID playerUUID) {

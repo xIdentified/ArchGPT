@@ -7,7 +7,6 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
@@ -159,13 +158,8 @@ public class NPCEventListener implements Listener {
                 // Fetch the prompt from config
                 String prompt = plugin.getConfig().getString("npcs." + npc.getName());
                 if (prompt != null && !prompt.isEmpty()) {
-                    // Modify the prompt to specify a greeting context
-                    Component promptComponent = Component.text(prompt)
-                            .append(Component.newline())
-                            .append(Component.text("A player named " + player.getName() + " approaches you. How do you greet them?"));
-
                     // Get the greeting for the NPC asynchronously
-                    conversationManager.getGreeting(promptComponent, player).thenAccept(greeting -> {
+                    conversationManager.getGreeting(player, npc).thenAccept(greeting -> {
                         if (greeting != null) {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 // Utilize the sendNPCMessage method to send the greeting
