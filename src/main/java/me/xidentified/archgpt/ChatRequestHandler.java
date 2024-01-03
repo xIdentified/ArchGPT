@@ -18,6 +18,7 @@ import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import javax.naming.ServiceUnavailableException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -68,12 +69,20 @@ public class ChatRequestHandler {
                         JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
                         return extractAssistantResponseText(responseObject);
                     } else {
-                        throw new RuntimeException("ChatGPT API Error: " + EntityUtils.toString(response.getEntity()));
+                        String responseString = EntityUtils.toString(response.getEntity());
+                        if (statusCode == 503) {
+                            throw new ServiceUnavailableException("ChatGPT API Service Unavailable: " + responseString);
+                        } else {
+                            throw new RuntimeException("ChatGPT API Error: " + responseString);
+                        }
                     }
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("Thread was interrupted: " + e.getMessage());
+            } catch (ServiceUnavailableException e) {
+                plugin.getLogger().warning("ChatGPT API is currently unavailable. Please try again later.");
+                return "Sorry, I am unable to respond right now. Please try again later.";
             } catch (IOException e) {
                 throw new RuntimeException("ChatGPT API Request Failed: " + e.getMessage());
             } finally {
@@ -132,7 +141,7 @@ public class ChatRequestHandler {
         }
         plugin.getLogger().warning("Invalid response structure from ChatGPT API");
         plugin.debugLog("ChatGPT API response object: " + responseObject);
-        return ""; // Fallback value or handle appropriately
+        return "";
     }
 
     @NotNull

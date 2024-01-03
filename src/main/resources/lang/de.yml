@@ -1,21 +1,21 @@
 general:
   must_be_player: "<negative>Nur Spieler können diesen Befehl verwenden."
-  no_perm: "<negative>Sie haben nicht genügend Berechtigungen"
+  msg_too_short: "<negative>Deine Nachricht ist zu kurz, verwende mindestens <size> Zeichen."
   cmd:
-    no_perm: "<negative>Sie haben keine Berechtigung, diesen Befehl zu verwenden."
+    no_perm: "<negative>Du hast keine Berechtigung, diesen Befehl zu verwenden."
   player_not_found: "<negative>Spieler nicht gefunden: <name>"
-  reload_success: "<positive>ArchGPT erfolgreich neu geladen!"
-  msg_too_short: "<negative>Ihre Nachricht ist zu kurz, verwenden Sie mindestens <size> Zeichen."
-
-conversation:
-  started: "<yellow>Gespräch mit <npc> begonnen. Geben Sie 'abbrechen' ein, um zu beenden."
-  ended: "<yellow>Gespräch beendet."
-  ended_inactivity: "<yellow>Gespräch aufgrund von Inaktivität beendet."
-  ended_changed_worlds: "<positive>Test"
-  ended_walked_away: "<positive>Test"
-
+  chat_cooldown: "<negative>Bitte warte, bevor du eine weitere Nachricht sendest."
+reload:
+  success: "<positive>ArchGPT erfolgreich neu geladen!"
+  usage: "<positive>Verwendung: /archgpt reload"
 report:
-  none_to_display: "<negative>Es gibt keine anzuzeigenden Berichte."
-  type_selected: "Sie haben <type> ausgewählt. Geben Sie Ihr Feedback zur letzten NPC-Nachricht ein."
-  submitted: "<positive>Vielen Dank, Ihr Bericht wurde eingereicht. Geben Sie 'abbrechen' ein, um das Gespräch zu beenden."
   deleted: "<positive>Bericht erfolgreich gelöscht."
+  submitted: "<positive>Vielen Dank, dein Bericht wurde eingereicht. Gib 'abbrechen' ein, um das Gespräch zu beenden."
+  type_selected: "<positive>Du hast <type> ausgewählt. Gib dein Feedback zur letzten NPC-Nachricht ein."
+  select_type: "<negative>Bitte klicke einen der obigen Berichtstypen an, um fortzufahren."
+  none_to_display: "<negative>Es gibt keine Berichte zum Anzeigen."
+conversation:
+  ended_walked_away: "<yellow>Gespräch beendet, weil du weggegangen bist."
+  ended_inactivity: "<yellow>Gespräch wegen Inaktivität beendet."
+  started: "<yellow>Gespräch beendet."
+  ended_changed_worlds: "<yellow>Gespräch beendet, weil du die Welten gewechselt hast."

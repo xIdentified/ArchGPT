@@ -37,12 +37,12 @@ public class NPCConversationManager {
     private final ArchGPT plugin;
     @Getter private final ArchGPTConfig configHandler;
     @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
-    private final Map<UUID, AtomicInteger> conversationTokenCounters; //Ensures conversation doesn't go over token limit
+    private final ConcurrentHashMap<UUID, AtomicInteger> conversationTokenCounters; //Ensures conversation doesn't go over token limit
     @Getter private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
     public final Map<UUID, Long> npcCommentCooldown = new ConcurrentHashMap<>(); //Stores cooldown for NPC greeting to passing player
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
-    public final Map<UUID, List<Component>> npcChatStatesCache;
-    protected final Map<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
+    public final ConcurrentHashMap<UUID, List<Component>> npcChatStatesCache;
+    protected final ConcurrentHashMap<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
 
     public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -115,6 +115,7 @@ public class NPCConversationManager {
         initialConversationState.add(npcIntroComponent);
 
         // Store conversation state and start conversation
+        playerNPCMap.put(playerUUID, npc);
         npcChatStatesCache.put(playerUUID, initialConversationState);
         synchronized (plugin.getActiveConversations()) {
             plugin.getActiveConversations().put(playerUUID, true);
@@ -124,6 +125,8 @@ public class NPCConversationManager {
                 Placeholder.unparsed("npc", npcName),
                 Placeholder.unparsed("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase")))
         ));
+
+        // Start timeout
         conversationTimeoutManager.startConversationTimeout(playerUUID);
     }
 
@@ -204,6 +207,8 @@ public class NPCConversationManager {
     }
 
     public void sendNPCMessage(Player player, UUID playerUUID, String npcName, Component response) {
+        plugin.getLogger().warning("Sending NPC message to player");
+
         TextColor npcNameColor = fromConfigString(configHandler.getNpcNameColor());
         TextColor npcMessageColor = fromConfigString(configHandler.getNpcMessageColor());
 
@@ -350,6 +355,7 @@ public class NPCConversationManager {
                             public void run() {
                                 if (plugin.getActiveConversations().containsKey(playerUUID)) {
                                     sendNPCMessage(player, playerUUID, npcName, response);
+                                    plugin.getLogger().warning("sent NPC message to " + player.getName());
                                     npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
                                 }
                                 hologramManager.removePlayerHologram(playerUUID);

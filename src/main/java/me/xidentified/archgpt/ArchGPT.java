@@ -50,9 +50,9 @@ public class ArchGPT extends JavaPlugin {
     private HologramManager hologramManager;
     private ReportManager reportManager;
     private TranslationService translationService;
-    private BukkitAudiences audiences;
-    private Translations translations;
     private NPCConversationManager manager;
+    BukkitAudiences audiences;
+    Translations translations;
 
     @Override
     public void onEnable() {
@@ -61,16 +61,16 @@ public class ArchGPT extends JavaPlugin {
             this.configHandler = new ArchGPTConfig(this);
             this.hologramManager = new HologramManager(this);
             this.reportManager = new ReportManager(this);
-            this.audiences = BukkitAudiences.create(this);
 
-            TranslationsFramework.enable(new File(this.getDataFolder(), "/../"));
-            this.translations = TranslationsFramework.application("ArchGPT");
+            audiences = BukkitAudiences.create(this);
+            TranslationsFramework.enable(new File(getDataFolder(), "/../"));
+            translations = TranslationsFramework.application("ArchGPT");
+            translations.setMessageStorage(new YamlMessageStorage(new File(getDataFolder(), "/lang/")));
+            translations.setStyleStorage(new YamlStyleStorage(new File(getDataFolder(), "/lang/styles.yml")));
 
-            this.translations.setMessageStorage(new YamlMessageStorage(new File(this.getDataFolder(), "/lang/")));
-            this.translations.setStyleStorage(new YamlStyleStorage(new File(this.getDataFolder(), "/lang/styles.yml")));
-            this.translations.addMessages(TranslationsFramework.messageFieldsFromClass(Messages.class));
+            translations.addMessages(TranslationsFramework.messageFieldsFromClass(Messages.class));
 
-            this.loadLanguages();
+            loadLanguages();
 
             // Set the LocaleProvider
             translations.setLocaleProvider(audience -> {
@@ -151,16 +151,18 @@ public class ArchGPT extends JavaPlugin {
         }
 
         this.translations.saveLocale(Locale.ENGLISH);
+
         this.saveResource("lang/de.yml", false);
+        this.saveResource("lang/ru.yml", false);
         this.translations.loadLocales();
     }
 
     public void sendMessage(CommandSender sender, ComponentLike componentLike) {
-        Audience audience = this.audiences.sender(sender);
+        Audience audience = audiences.sender(sender);
         if (componentLike instanceof Message msg) {
+            // Translate the message into the locale of the command sender
             componentLike = msg.formatted(audience);
         }
-
         audience.sendMessage(componentLike);
     }
 
