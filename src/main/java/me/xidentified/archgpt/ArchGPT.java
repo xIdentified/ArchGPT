@@ -12,6 +12,10 @@ import me.xidentified.archgpt.commands.ArchGPTCommand;
 import me.xidentified.archgpt.commands.ReportTypeCommandExecutor;
 import me.xidentified.archgpt.listeners.NPCEventListener;
 import me.xidentified.archgpt.reports.*;
+import me.xidentified.archgpt.storage.dao.ConversationDAO;
+import me.xidentified.archgpt.storage.dao.MySQLConversationDAO;
+import me.xidentified.archgpt.storage.dao.SQLiteConversationDAO;
+import me.xidentified.archgpt.storage.impl.YamlConversationDAO;
 import me.xidentified.archgpt.utils.Messages;
 import me.xidentified.archgpt.utils.Metrics;
 import me.xidentified.archgpt.utils.Placeholders;
@@ -51,6 +55,7 @@ public class ArchGPT extends JavaPlugin {
     private ReportManager reportManager;
     private TranslationService translationService;
     private NPCConversationManager manager;
+    private ConversationDAO conversationDAO;
     BukkitAudiences audiences;
     Translations translations;
 
@@ -102,6 +107,26 @@ public class ArchGPT extends JavaPlugin {
             Objects.requireNonNull(this.getCommand("archgpt")).setExecutor(new ArchGPTCommand(this));
             Objects.requireNonNull(this.getCommand("archgpt")).setTabCompleter(new ArchGPTCommand(this));
 
+            // Set storage type
+            String storageType = getConfig().getString("storage.type", "yaml");
+            switch (storageType.toLowerCase()) {
+                case "sqlite":
+                    String sqlitePath = getDataFolder() + File.separator + "conversations.db";
+                    conversationDAO = new SQLiteConversationDAO(sqlitePath);
+                    break;
+                case "mysql":
+                    String host = getConfig().getString("storage.mysql.host");
+                    int port = getConfig().getInt("storage.mysql.port");
+                    String database = getConfig().getString("storage.mysql.database");
+                    String username = getConfig().getString("storage.mysql.username");
+                    String password = getConfig().getString("storage.mysql.password");
+                    conversationDAO = new MySQLConversationDAO(host, port, database, username, password);
+                    break;
+                case "yaml":
+                default:
+                    conversationDAO = new YamlConversationDAO(getDataFolder());
+                    break;
+            }
 
             // Set the logger level based on debugMode
             Level loggerLevel = configHandler.isDebugMode() ? Level.INFO : Level.WARNING;

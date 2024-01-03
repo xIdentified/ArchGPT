@@ -5,6 +5,7 @@ import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
 import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
+import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
 import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.npc.NPC;
@@ -106,8 +107,14 @@ public class NPCConversationManager {
         UUID playerUUID = player.getUniqueId();
         String npcName = npc.getName();
 
+        // Retrieve past conversations
+        List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName);
+
+        // Process past conversations for context
+        String pastConversationContext = processPastConversations(pastConversations, npcName);
+
         // Get combined context for the NPC
-        String combinedContext = getCombinedContext(npcName, player);
+        String combinedContext = getCombinedContext(npcName, player) + " " + pastConversationContext;
 
         // Prepare initial conversation state
         Component npcIntroComponent = Component.text(combinedContext);
@@ -128,6 +135,24 @@ public class NPCConversationManager {
 
         // Start timeout
         conversationTimeoutManager.startConversationTimeout(playerUUID);
+    }
+
+    private String processPastConversations(List<Conversation> conversations, String npcName) {
+        StringBuilder contextBuilder = new StringBuilder();
+
+        for (Conversation conversation : conversations) {
+            if (conversation.getNpcName().equals(npcName)) {
+                // Include relevant details from past conversations
+                // For example, you might want to include the last few interactions
+                // or summarize key points if the conversation was long ago
+                contextBuilder.append("Previously, ")
+                        .append(npcName)
+                        .append(" said: \"")
+                        .append(conversation.getMessage())
+                        .append("\". ");
+            }
+        }
+        return contextBuilder.toString();
     }
 
     public void endConversation(UUID playerUUID) {
@@ -207,8 +232,6 @@ public class NPCConversationManager {
     }
 
     public void sendNPCMessage(Player player, UUID playerUUID, String npcName, Component response) {
-        plugin.getLogger().warning("Sending NPC message to player");
-
         TextColor npcNameColor = fromConfigString(configHandler.getNpcNameColor());
         TextColor npcMessageColor = fromConfigString(configHandler.getNpcMessageColor());
 
@@ -355,8 +378,9 @@ public class NPCConversationManager {
                             public void run() {
                                 if (plugin.getActiveConversations().containsKey(playerUUID)) {
                                     sendNPCMessage(player, playerUUID, npcName, response);
-                                    plugin.getLogger().warning("sent NPC message to " + player.getName());
                                     npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
+                                    Conversation conversation = new Conversation(player.getUniqueId(), npc.getName(), PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
+                                    plugin.getConversationDAO().saveConversation(conversation);
                                 }
                                 hologramManager.removePlayerHologram(playerUUID);
                             }
