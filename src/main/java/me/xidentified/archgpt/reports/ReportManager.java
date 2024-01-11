@@ -6,7 +6,6 @@ import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.storage.dao.MySQLReportDAO;
 import me.xidentified.archgpt.storage.dao.ReportDAO;
 import me.xidentified.archgpt.storage.dao.SQLiteReportDAO;
-import me.xidentified.archgpt.storage.impl.YamlReportDAO;
 import me.xidentified.archgpt.storage.model.Report;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -17,7 +16,7 @@ public class ReportManager {
     private final Map<UUID, String> selectedReportTypes = new ConcurrentHashMap<>();
 
     public ReportManager(ArchGPT plugin) {
-        String storageType = plugin.getConfig().getString("storage.type", "yaml");
+        String storageType = plugin.getConfig().getString("storage.type", "sqlite");
         switch (storageType.toLowerCase()) {
             case "sqlite":
                 this.reportDAO = new SQLiteReportDAO(plugin.getDataFolder());
@@ -32,7 +31,8 @@ public class ReportManager {
                 this.reportDAO = new MySQLReportDAO(host, port, database, username, password);
                 break;
             default:
-                this.reportDAO = new YamlReportDAO(plugin.getDataFolder(), plugin);
+                // Default to SQLite if the specified storage type is not recognized
+                this.reportDAO = new SQLiteReportDAO(plugin.getDataFolder());
                 break;
         }
     }

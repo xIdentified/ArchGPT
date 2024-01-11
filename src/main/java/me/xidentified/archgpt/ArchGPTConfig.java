@@ -25,9 +25,11 @@ public class ArchGPTConfig {
     private String npcNameColor;
     private String playerNameColor;
     private String npcMessageColor;
+    private int npcMemoryDuration;
     private int minCharLength;
     private int maxResponseLength;
     private long chatCooldownMillis;
+    private boolean shouldSplitLongMsg;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -52,6 +54,8 @@ public class ArchGPTConfig {
         playerNameColor = config.getString("chat_colors.player_name");
         npcMessageColor = config.getString("chat_colors.npc_message");
         playerMessageColor = config.getString("chat_colors.player_message");
+        npcMemoryDuration = config.getInt("npc_memory_duration", 7);
+        shouldSplitLongMsg = config.getBoolean("split_long_messages", false);
 
         // Set the logger level based on debugMode
         Level loggerLevel = debugMode ? Level.INFO : Level.WARNING;
@@ -105,6 +109,5 @@ public class ArchGPTConfig {
         logger.info(YELLOW + "ChatGPT Engine: " + chatGptEngine + RESET);
         logger.info(GREEN + "--------------------------------" + RESET);
     }
-
 
 }

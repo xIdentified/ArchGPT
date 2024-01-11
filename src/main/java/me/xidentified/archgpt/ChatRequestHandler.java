@@ -136,12 +136,43 @@ public class ChatRequestHandler {
         if (responseObject.has("choices") && !responseObject.getAsJsonArray("choices").isEmpty()) {
             JsonObject choice = responseObject.getAsJsonArray("choices").get(0).getAsJsonObject();
             if (choice.has("message") && choice.getAsJsonObject("message").has("content")) {
-                return choice.getAsJsonObject("message").get("content").getAsString().trim();
+                String responseText = choice.getAsJsonObject("message").get("content").getAsString().trim();
+                return insertBreakTags(responseText);
             }
         }
         plugin.getLogger().warning("Invalid response structure from ChatGPT API");
         plugin.debugLog("ChatGPT API response object: " + responseObject);
         return "";
+    }
+
+    private String insertBreakTags(String text) {
+        int sentenceCountPerChunk = 2;
+        StringBuilder modifiedText = new StringBuilder();
+        int sentenceCount = 0;
+        int startIndex = 0;
+
+        for (int i = 0; i < text.length(); i++) {
+            // Check for sentence end (considering space or end of text after punctuation)
+            if ((text.charAt(i) == '.' || text.charAt(i) == '?' || text.charAt(i) == '!') && (i + 1 == text.length() || text.charAt(i + 1) == ' ')) {
+                sentenceCount++;
+                if (sentenceCount == sentenceCountPerChunk) {
+                    // Add the text chunk to the modified text
+                    modifiedText.append(capitalizeSentences(text.substring(startIndex, i + 1).trim()));
+                    if (i + 1 < text.length()) {
+                        modifiedText.append("<br>");
+                    }
+                    startIndex = i + 1;
+                    sentenceCount = 0;
+                }
+            }
+        }
+
+        // Add the remaining part of the text if any
+        if (startIndex < text.length()) {
+            modifiedText.append(capitalizeSentences(text.substring(startIndex).trim()));
+        }
+
+        return modifiedText.toString();
     }
 
     @NotNull
@@ -185,21 +216,30 @@ public class ChatRequestHandler {
         return Component.text(response);
     }
 
-    private String capitalizeFirstLetter(String str) {
+    private String capitalizeSentences(String str) {
         if (str == null || str.isEmpty()) {
             return str;
         }
-        return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
+
+        // Capitalize the first letter of the string
+        str = capitalizeFirstLetter(str);
+
+        // Create a pattern to find sentence ends followed by a lowercase letter
+        Pattern pattern = Pattern.compile("(?<=[.!?])\\s+(\\p{Lower})");
+        Matcher matcher = pattern.matcher(str);
+
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            // Replace lowercase letter after sentence end with uppercase
+            matcher.appendReplacement(sb, " " + matcher.group(1).toUpperCase());
+        }
+        matcher.appendTail(sb);
+
+        return sb.toString();
     }
 
-    private String capitalizeSentences(String str) {
-        Matcher m = Pattern.compile("(^|[.!?]\\s*)([a-z])").matcher(str);
-        StringBuilder sb = new StringBuilder();
-        while (m.find()) {
-            m.appendReplacement(sb, m.group(1) + m.group(2).toUpperCase());
-        }
-        m.appendTail(sb);
-        return sb.toString();
+    private String capitalizeFirstLetter(String str) {
+        return Character.toUpperCase(str.charAt(0)) + str.substring(1);
     }
 
 }

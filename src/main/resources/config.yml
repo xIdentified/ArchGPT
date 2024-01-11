@@ -37,13 +37,18 @@ chat_colors:
   npc_message: "&7"
   player_message: "&f"
 
+# Optionally split NPC responses, so they don't send as paragraphs
+split_long_messages: false
+
 # Popup dialogue that prompts player to begin conversation. Leave empty to disable.
 conversation_start_popup: "Right-click to talk"
 # Phrase to end conversations with, required.
 conversation_end_phrase: "cancel"
+# Number of days NPCs will remember past dialogue
+npc_memory_duration: 7
 
 storage:
-  type: 'yaml' # Options: yaml, sqlite, mysql
+  type: 'sqlite' # Options: sqlite, mysql
   mysql:
     host: 'localhost'
     port: 3306

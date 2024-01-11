@@ -15,7 +15,6 @@ import me.xidentified.archgpt.reports.*;
 import me.xidentified.archgpt.storage.dao.ConversationDAO;
 import me.xidentified.archgpt.storage.dao.MySQLConversationDAO;
 import me.xidentified.archgpt.storage.dao.SQLiteConversationDAO;
-import me.xidentified.archgpt.storage.impl.YamlConversationDAO;
 import me.xidentified.archgpt.utils.Messages;
 import me.xidentified.archgpt.utils.Metrics;
 import me.xidentified.archgpt.utils.Placeholders;
@@ -108,7 +107,7 @@ public class ArchGPT extends JavaPlugin {
             Objects.requireNonNull(this.getCommand("archgpt")).setTabCompleter(new ArchGPTCommand(this));
 
             // Set storage type
-            String storageType = getConfig().getString("storage.type", "yaml");
+            String storageType = getConfig().getString("storage.type", "sqlite");
             switch (storageType.toLowerCase()) {
                 case "sqlite":
                     // Create the SQLite file in the plugin's storage directory
@@ -122,10 +121,6 @@ public class ArchGPT extends JavaPlugin {
                     String username = getConfig().getString("storage.mysql.username");
                     String password = getConfig().getString("storage.mysql.password");
                     conversationDAO = new MySQLConversationDAO(host, port, database, username, password);
-                    break;
-                case "yaml":
-                default:
-                    conversationDAO = new YamlConversationDAO(getDataFolder());
                     break;
             }
 
@@ -179,7 +174,6 @@ public class ArchGPT extends JavaPlugin {
         this.translations.saveLocale(Locale.ENGLISH);
 
         this.saveResource("lang/de.yml", false);
-        this.saveResource("lang/ru.yml", false);
         this.translations.loadLocales();
     }
 

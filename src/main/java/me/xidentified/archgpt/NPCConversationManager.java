@@ -107,14 +107,8 @@ public class NPCConversationManager {
         UUID playerUUID = player.getUniqueId();
         String npcName = npc.getName();
 
-        // Retrieve past conversations
-        List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName);
-
-        // Process past conversations for context
-        String pastConversationContext = processPastConversations(pastConversations, npcName);
-
         // Get combined context for the NPC
-        String combinedContext = getCombinedContext(npcName, player) + " " + pastConversationContext;
+        String combinedContext = getCombinedContext(npcName, player);
 
         // Prepare initial conversation state
         Component npcIntroComponent = Component.text(combinedContext);
@@ -135,24 +129,6 @@ public class NPCConversationManager {
 
         // Start timeout
         conversationTimeoutManager.startConversationTimeout(playerUUID);
-    }
-
-    private String processPastConversations(List<Conversation> conversations, String npcName) {
-        StringBuilder contextBuilder = new StringBuilder();
-
-        for (Conversation conversation : conversations) {
-            if (conversation.getNpcName().equals(npcName)) {
-                // Include relevant details from past conversations
-                // For example, you might want to include the last few interactions
-                // or summarize key points if the conversation was long ago
-                contextBuilder.append("Previously, ")
-                        .append(npcName)
-                        .append(" said: \"")
-                        .append(conversation.getMessage())
-                        .append("\". ");
-            }
-        }
-        return contextBuilder.toString();
     }
 
     public void endConversation(UUID playerUUID) {
@@ -235,18 +211,36 @@ public class NPCConversationManager {
         TextColor npcNameColor = fromConfigString(configHandler.getNpcNameColor());
         TextColor npcMessageColor = fromConfigString(configHandler.getNpcMessageColor());
 
-        Component npcNameComponent = Component.text(npcName + ": ")
-                .color(npcNameColor);
+        boolean splitLongMessages = configHandler.isShouldSplitLongMsg();
 
-        Component npcMessageComponent = response.color(npcMessageColor);
+        // Convert the response component to plain text
+        String responseText = PlainTextComponentSerializer.plainText().serialize(response);
 
-        String uniqueMessageIdentifier = playerUUID.toString() + "_" + System.currentTimeMillis();
+        // Split the text based on the config setting
+        String[] messageParts;
+        if (splitLongMessages) {
+            // Split using a custom delimiter like "<br>"
+            messageParts = responseText.split("<br>");
+        } else {
+            // No splitting, use the entire text as one part
+            messageParts = new String[]{responseText};
+        }
 
-        Component messageComponent = npcNameComponent.append(npcMessageComponent)
-                .hoverEvent(HoverEvent.showText(Component.text("Click to report", NamedTextColor.RED)))
-                .clickEvent(ClickEvent.runCommand("/reportnpcmessage " + uniqueMessageIdentifier));
+        for (String part : messageParts) {
+            // Convert each part back to a Component
+            Component npcMessageComponent = Component.text(part).color(npcMessageColor);
 
-        player.sendMessage(messageComponent);
+            Component npcNameComponent = Component.text(npcName + ": ")
+                    .color(npcNameColor);
+
+            String uniqueMessageIdentifier = playerUUID.toString() + "_" + System.currentTimeMillis();
+
+            Component messageComponent = npcNameComponent.append(npcMessageComponent)
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to report", NamedTextColor.RED)))
+                    .clickEvent(ClickEvent.runCommand("/reportnpcmessage " + uniqueMessageIdentifier));
+
+            player.sendMessage(messageComponent);
+        }
     }
 
     public boolean isInActiveConversation(UUID playerUUID) {
