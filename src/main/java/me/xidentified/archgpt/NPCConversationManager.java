@@ -213,34 +213,30 @@ public class NPCConversationManager {
 
         boolean splitLongMessages = configHandler.isShouldSplitLongMsg();
 
-        // Convert the response component to plain text
-        String responseText = PlainTextComponentSerializer.plainText().serialize(response);
-
-        // Split the text based on the config setting
-        String[] messageParts;
         if (splitLongMessages) {
-            // Split using a custom delimiter like "<br>"
-            messageParts = responseText.split("<br>");
+            // Split the response into parts and send each part as a separate message
+            response.children().forEach(part -> {
+                Component npcMessageComponent = part.color(npcMessageColor);
+                sendIndividualNPCMessage(player, playerUUID, npcName, npcNameColor, npcMessageComponent);
+            });
         } else {
-            // No splitting, use the entire text as one part
-            messageParts = new String[]{responseText};
+            // Send the entire response as a single message
+            Component npcMessageComponent = response.color(npcMessageColor);
+            sendIndividualNPCMessage(player, playerUUID, npcName, npcNameColor, npcMessageComponent);
         }
+    }
 
-        for (String part : messageParts) {
-            // Convert each part back to a Component
-            Component npcMessageComponent = Component.text(part).color(npcMessageColor);
+    private void sendIndividualNPCMessage(Player player, UUID playerUUID, String npcName, TextColor npcNameColor, Component npcMessageComponent) {
+        Component npcNameComponent = Component.text(npcName + ": ")
+                .color(npcNameColor);
 
-            Component npcNameComponent = Component.text(npcName + ": ")
-                    .color(npcNameColor);
+        String uniqueMessageIdentifier = playerUUID.toString() + "_" + System.currentTimeMillis();
 
-            String uniqueMessageIdentifier = playerUUID.toString() + "_" + System.currentTimeMillis();
+        Component messageComponent = npcNameComponent.append(npcMessageComponent)
+                .hoverEvent(HoverEvent.showText(Component.text("Click to report", NamedTextColor.RED)))
+                .clickEvent(ClickEvent.runCommand("/reportnpcmessage " + uniqueMessageIdentifier));
 
-            Component messageComponent = npcNameComponent.append(npcMessageComponent)
-                    .hoverEvent(HoverEvent.showText(Component.text("Click to report", NamedTextColor.RED)))
-                    .clickEvent(ClickEvent.runCommand("/reportnpcmessage " + uniqueMessageIdentifier));
-
-            player.sendMessage(messageComponent);
-        }
+        player.sendMessage(messageComponent);
     }
 
     public boolean isInActiveConversation(UUID playerUUID) {

@@ -12,8 +12,6 @@ import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -21,14 +19,10 @@ import org.jetbrains.annotations.NotNull;
 import javax.naming.ServiceUnavailableException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class ChatRequestHandler {
     private final ArchGPT plugin;
@@ -115,7 +109,6 @@ public class ChatRequestHandler {
                 return responseComponent;
             } else {
                 // Additional processing for non-greeting requests
-                Component sanitizedResponse = sanitizeAPIResponse(responseComponent);
                 String sanitizedPlayerMessage = StringEscapeUtils.escapeJson(PlainTextComponentSerializer.plainText().serialize(playerMessageComponent));
 
                 if (conversationState.size() > ArchGPTConstants.MAX_CONVERSATION_STATE_SIZE * 2) {
@@ -123,9 +116,9 @@ public class ChatRequestHandler {
                 }
 
                 conversationState.add(Component.text("user: " + sanitizedPlayerMessage));
-                conversationState.add(Component.text("assistant: ").append(sanitizedResponse));
+                conversationState.add(Component.text("assistant: ").append(responseComponent));
 
-                return Pair.of(sanitizedResponse, conversationState);
+                return Pair.of(responseComponent, conversationState);
             }
         });
     }
@@ -141,7 +134,7 @@ public class ChatRequestHandler {
                 if (shouldSplitLongMessages) {
                     return insertBreakTags(responseText);
                 } else {
-                    return capitalizeSentences(responseText);
+                    return responseText;
                 }
             }
         }
@@ -162,7 +155,7 @@ public class ChatRequestHandler {
                 sentenceCount++;
                 if (sentenceCount == sentenceCountPerChunk) {
                     // Add the text chunk to the modified text
-                    modifiedText.append(capitalizeSentences(text.substring(startIndex, i + 1).trim()));
+                    modifiedText.append(text.substring(startIndex, i + 1).trim());
                     if (i + 1 < text.length()) {
                         modifiedText.append("<br>");
                     }
@@ -174,7 +167,7 @@ public class ChatRequestHandler {
 
         // Add the remaining part of the text if any
         if (startIndex < text.length()) {
-            modifiedText.append(capitalizeSentences(text.substring(startIndex).trim()));
+            modifiedText.append(text.substring(startIndex).trim());
         }
 
         return modifiedText.toString();
@@ -190,61 +183,6 @@ public class ChatRequestHandler {
         httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
         httpPost.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
         return httpPost;
-    }
-
-    private Component sanitizeAPIResponse(Component chatGptResponseComponent) {
-        String response = PlainTextComponentSerializer.plainText().serialize(chatGptResponseComponent);
-
-        // Process each word, skipping placeholders
-        response = Arrays.stream(response.split(" "))
-                .map(word -> {
-                    // Check if the word is a placeholder
-                    if (word.startsWith("%") && word.endsWith("%")) {
-                        return word;
-                    }
-
-                    // Process non-placeholder words
-                    else if (word.contains("_")) {
-                        return Arrays.stream(word.split("_"))
-                                .map(this::capitalizeFirstLetter)
-                                .collect(Collectors.joining(" "));
-                    } else {
-                        return word.toLowerCase();
-                    }
-                })
-                .collect(Collectors.joining(" "));
-
-        response = capitalizeSentences(response);
-        response = response.replace(" i ", " I ");
-        response = response.replace(" i'm ", " I'm ");
-
-        return Component.text(response);
-    }
-
-    private String capitalizeSentences(String str) {
-        if (str == null || str.isEmpty()) {
-            return str;
-        }
-
-        // Capitalize the first letter of the string
-        str = capitalizeFirstLetter(str);
-
-        // Create a pattern to find sentence ends followed by a lowercase letter
-        Pattern pattern = Pattern.compile("(?<=[.!?])\\s+(\\p{Lower})");
-        Matcher matcher = pattern.matcher(str);
-
-        StringBuilder sb = new StringBuilder();
-        while (matcher.find()) {
-            // Replace lowercase letter after sentence end with uppercase
-            matcher.appendReplacement(sb, " " + matcher.group(1).toUpperCase());
-        }
-        matcher.appendTail(sb);
-
-        return sb.toString();
-    }
-
-    private String capitalizeFirstLetter(String str) {
-        return Character.toUpperCase(str.charAt(0)) + str.substring(1);
     }
 
 }
