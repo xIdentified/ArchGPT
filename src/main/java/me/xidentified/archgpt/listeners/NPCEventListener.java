@@ -9,12 +9,14 @@ import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -28,6 +30,8 @@ public class NPCEventListener implements Listener {
     private final ArchGPTConfig configHandler;
     private final Set<UUID> npcsProcessingGreeting = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Long> lastChatTimestamps = new ConcurrentHashMap<>();
+    private final Map<UUID, Location> lastSignificantLocations = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> playerGreetingCooldown = new ConcurrentHashMap<>();
 
     public NPCEventListener(ArchGPT plugin, NPCConversationManager conversationManager, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -116,11 +120,27 @@ public class NPCEventListener implements Listener {
     }
 
     //Listener for player movement for NPC greetings, and to end conversation if player walks away
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
 
+        Location from = event.getFrom();
+        Location to = event.getTo();
+
+        // Check if the player has moved a significant distance (e.g., 3 blocks)
+        Location lastLocation = lastSignificantLocations.getOrDefault(playerUUID, from);
+        double distanceSquared = lastLocation.distanceSquared(to);
+        plugin.debugLog("Distance squared: " + distanceSquared);
+
+        if (!from.getWorld().equals(to.getWorld()) || lastLocation.distanceSquared(to) < 9) {
+            return;
+        }
+
+        lastSignificantLocations.put(playerUUID, to.clone());
+        plugin.debugLog("Player moved significantly");
+
+        // Handle stuff if player is in conversation - walking away, change worlds, etc
         if (this.plugin.getActiveConversations().containsKey(playerUUID)) {
             NPC npc = conversationManager.playerNPCMap.get(playerUUID);
 
@@ -147,25 +167,47 @@ public class NPCEventListener implements Listener {
             return; // Exit to stop greeting from sending again
         }
 
-        // If not in conversation, check if any NPC wants to greet the player
-        for (NPC npc : CitizensAPI.getNPCRegistry()) {
+        // If not in conversation, check if nearby NPCs want to greet the player
+        plugin.debugLog("About to check through nearby entities for greeting");
+
+        // Check player's greeting cooldown
+        Long lastGreetTime = playerGreetingCooldown.getOrDefault(playerUUID, 0L);
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastGreetTime < 4000) {
+            return; // Player is still in cooldown, skip processing
+        }
+
+        // Update the player's greeting cooldown
+        playerGreetingCooldown.put(playerUUID, currentTime);
+
+        double radius = 10.0;
+        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
+            if (!CitizensAPI.getNPCRegistry().isNPC(entity)) {
+                plugin.debugLog("Entity not an NPC, skipping.");
+                continue;
+            }
+
+            NPC npc = CitizensAPI.getNPCRegistry().getNPC(entity);
+
             if (npc.isSpawned() && conversationManager.isInLineOfSight(npc, player) && conversationManager.canComment(npc)) {
                 if (!npcsProcessingGreeting.add(npc.getUniqueId())) {
                     // This NPC is already processing a greeting, skip to the next NPC
                     continue;
                 }
 
+                // Update the cooldown for the NPC
+                conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
+
                 // Fetch the prompt from config
                 String prompt = plugin.getConfig().getString("npcs." + npc.getName());
                 if (prompt != null && !prompt.isEmpty()) {
                     // Get the greeting for the NPC asynchronously
+                    plugin.debugLog("Requesting greeting asynchronously!");
                     conversationManager.getGreeting(player, npc).thenAccept(greeting -> {
                         if (greeting != null) {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 // Utilize the sendNPCMessage method to send the greeting
                                 conversationManager.sendNPCMessage(player, npc.getUniqueId(), npc.getName(), greeting);
-                                // Update the cooldown for the NPC
-                                conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
 
                                 // For new players, a hologram appears prompting them to right-click the NPC to interact
                                 if (!player.hasPlayedBefore()) {
@@ -181,8 +223,16 @@ public class NPCEventListener implements Listener {
     }
 
     @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        lastSignificantLocations.put(player.getUniqueId(), player.getLocation());
+    }
+
+    @EventHandler
     public void onPlayerLeave(PlayerQuitEvent event) {
         UUID playerUUID = event.getPlayer().getUniqueId();
+        npcsProcessingGreeting.remove(playerUUID);
+        playerGreetingCooldown.remove(playerUUID);
         plugin.playerSemaphores.remove(playerUUID);
     }
 

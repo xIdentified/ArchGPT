@@ -1,5 +1,9 @@
 package me.xidentified.archgpt.context;
 
+import io.lumine.mythic.lib.api.player.MMOPlayerData;
+import net.Indyuce.mmocore.api.player.PlayerData;
+import net.Indyuce.mmocore.api.player.profess.PlayerClass;
+import net.Indyuce.mmocore.manager.data.PlayerDataManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Statistic;
@@ -8,8 +12,11 @@ import org.bukkit.inventory.ItemStack;
 
 public class PlayerContextProvider {
     private final Player player;
+    private final boolean isMMOCoreInstalled;
+
     public PlayerContextProvider(Player player) {
         this.player = player;
+        this.isMMOCoreInstalled = Bukkit.getPluginManager().isPluginEnabled("MMOCore");
     }
     public String getFormattedContext(String npcPrompt) {
         String playerExperience = getPlayerExperience();
@@ -17,9 +24,10 @@ public class PlayerContextProvider {
         String playerHandItem = getPlayerHeldItem();
         String playerHealthContext = getPlayerHealthContext();
         String playerHungerContext = getPlayerHungerContext();
+        String mmocoreContext = isMMOCoreInstalled ? getMMOCoreContext() : "";
 
-        return String.format("%s. The player you're speaking to is wearing %s and holding %s. %s %s %s",
-                npcPrompt, playerArmor, playerHandItem, playerHealthContext, playerHungerContext, playerExperience);
+        return String.format("%s. The player you're speaking to is wearing %s and holding %s. %s %s %s %s",
+                npcPrompt, playerArmor, playerHandItem, playerHealthContext, playerHungerContext, playerExperience, mmocoreContext);
     }
 
     public String getPlayerExperience() {
@@ -92,5 +100,22 @@ public class PlayerContextProvider {
         } else {
             return "nothing";
         }
+    }
+
+    private String getMMOCoreContext() {
+        PlayerData playerData = PlayerData.get(player);
+
+        // Get player class and level from MMOCore
+        PlayerClass playerClass = playerData.getProfess();
+        int playerLevel = playerData.getLevel();
+
+        // Check for party status
+        boolean isInParty = playerData.getParty() != null;
+
+        String partyStatus = isInParty ? "They are in a party." : "They are playing solo.";
+        String classStatus = playerClass != null ? "Their class is " + playerClass.getName() : "They have not selected a class yet.";
+        String levelStatus = "Their level is " + playerLevel + ".";
+
+        return String.format("%s. %s. %s", partyStatus, classStatus, levelStatus);
     }
 }

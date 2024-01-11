@@ -6,8 +6,7 @@ api-version: '1.20'
 
 depend:
   - Citizens
-softdepend: [PlaceholderAPI]
-
+softdepend: [PlaceholderAPI, MMOCore]
 
 libraries:
   - net.kyori:adventure-api:4.14.0

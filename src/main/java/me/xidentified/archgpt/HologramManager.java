@@ -183,15 +183,13 @@ public class HologramManager {
 
     // Starts a cleanup task that periodically checks for and removes expired holograms.
     private void startCleanupTask() {
-        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            allHolograms.removeIf(hologram -> {
-                if (hologram.getTicksLived() > ArchGPTConstants.MAX_HOLOGRAM_LIFETIME) {
-                    hologram.remove();
-                    return true;
-                }
-                return false;
-            });
-        }, 600L, 600L);
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> allHolograms.removeIf(hologram -> {
+            if (hologram.getTicksLived() > ArchGPTConstants.MAX_HOLOGRAM_LIFETIME) {
+                hologram.remove();
+                return true;
+            }
+            return false;
+        }), 600L, 600L);
     }
 
 }

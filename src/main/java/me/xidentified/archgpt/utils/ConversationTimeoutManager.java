@@ -1,8 +1,7 @@
-package me.xidentified.archgpt;
+package me.xidentified.archgpt.utils;
 
+import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.utils.Messages;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;

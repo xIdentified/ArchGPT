@@ -7,6 +7,7 @@ import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
 import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
+import me.xidentified.archgpt.utils.ConversationTimeoutManager;
 import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
@@ -82,7 +83,7 @@ public class NPCConversationManager {
 
         // Get combined context for the NPC with the specific greeting
         String combinedContext = getCombinedContext(npc.getName(), player);
-        String greetingContext = combinedContext + " A player named " + player.getName() + " approaches you. How do you greet them?";
+        String greetingContext = combinedContext + " The player, " + player.getName() + ", approaches you. How do you greet them?";
 
         // Add user prompt message with combined context
         JsonObject userMessage = new JsonObject();
@@ -193,7 +194,6 @@ public class NPCConversationManager {
         long commentCooldown = ArchGPTConstants.GREETING_COOLDOWN_MS;
         return System.currentTimeMillis() - lastCommentTime > commentCooldown;
     }
-
 
     public void sendPlayerMessage(Player player, Component playerMessage) {
         TextColor playerNameColor = fromConfigString(configHandler.getPlayerNameColor());

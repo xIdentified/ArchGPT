@@ -137,7 +137,14 @@ public class ChatRequestHandler {
             JsonObject choice = responseObject.getAsJsonArray("choices").get(0).getAsJsonObject();
             if (choice.has("message") && choice.getAsJsonObject("message").has("content")) {
                 String responseText = choice.getAsJsonObject("message").get("content").getAsString().trim();
-                return insertBreakTags(responseText);
+
+                // Check if the long messages should be split
+                boolean shouldSplitLongMessages = plugin.getConfigHandler().isShouldSplitLongMsg();
+                if (shouldSplitLongMessages) {
+                    return insertBreakTags(responseText);
+                } else {
+                    return capitalizeSentences(responseText);
+                }
             }
         }
         plugin.getLogger().warning("Invalid response structure from ChatGPT API");
