@@ -23,6 +23,8 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.ComponentLike;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.ArmorStand;
@@ -30,6 +32,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.*;
 import java.util.concurrent.*;
@@ -48,6 +51,10 @@ public class ArchGPT extends JavaPlugin {
     private final Map<UUID, Long> playerCooldowns = new ConcurrentHashMap<>();
     public final ConcurrentHashMap<UUID, Semaphore> playerSemaphores = new ConcurrentHashMap<>();
     private final Map<UUID, AtomicInteger> conversationTokenCounters = new ConcurrentHashMap<>();
+    private final CloseableHttpClient httpClient = HttpClients.custom()
+            .disableCookieManagement()
+            .build();
+
     // Managers
     private ArchGPTConfig configHandler;
     private HologramManager hologramManager;
@@ -208,6 +215,12 @@ public class ArchGPT extends JavaPlugin {
 
         // Unregister events
         HandlerList.unregisterAll();
+
+        try {
+            httpClient.close();
+        } catch (IOException e) {
+            getLogger().warning("Error closing HttpClient: " + e.getMessage());
+        }
 
         playerSemaphores.clear();
         conversationTokenCounters.clear();

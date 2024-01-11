@@ -47,9 +47,7 @@ public class ChatRequestHandler {
         plugin.playerSemaphores.putIfAbsent(playerUUID, new Semaphore(1));
 
         return CompletableFuture.supplyAsync(() -> {
-            try (CloseableHttpClient httpClient = HttpClients.custom()
-                    .disableCookieManagement()
-                    .build()) {
+            try {
                 // Acquire the semaphore for this specific player
                 Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
                 semaphore.acquire();
@@ -60,7 +58,7 @@ public class ChatRequestHandler {
 
                 plugin.debugLog("Request body sent to GPT: " + jsonRequest);
 
-                try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                try (CloseableHttpResponse response = plugin.getHttpClient().execute(httpPost)) {
                     int statusCode = response.getStatusLine().getStatusCode();
                     plugin.debugLog("Received response from ChatGPT API, Status Code: " + statusCode);
 
