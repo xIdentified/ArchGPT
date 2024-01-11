@@ -31,7 +31,6 @@ public class NPCEventListener implements Listener {
     private final Set<UUID> npcsProcessingGreeting = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Long> lastChatTimestamps = new ConcurrentHashMap<>();
     private final Map<UUID, Location> lastSignificantLocations = new ConcurrentHashMap<>();
-    private final Map<UUID, Long> playerGreetingCooldown = new ConcurrentHashMap<>();
 
     public NPCEventListener(ArchGPT plugin, NPCConversationManager conversationManager, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -120,7 +119,7 @@ public class NPCEventListener implements Listener {
     }
 
     //Listener for player movement for NPC greetings, and to end conversation if player walks away
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
@@ -130,15 +129,11 @@ public class NPCEventListener implements Listener {
 
         // Check if the player has moved a significant distance (e.g., 3 blocks)
         Location lastLocation = lastSignificantLocations.getOrDefault(playerUUID, from);
-        double distanceSquared = lastLocation.distanceSquared(to);
-        plugin.debugLog("Distance squared: " + distanceSquared);
-
         if (!from.getWorld().equals(to.getWorld()) || lastLocation.distanceSquared(to) < 9) {
             return;
         }
 
         lastSignificantLocations.put(playerUUID, to.clone());
-        plugin.debugLog("Player moved significantly");
 
         // Handle stuff if player is in conversation - walking away, change worlds, etc
         if (this.plugin.getActiveConversations().containsKey(playerUUID)) {
@@ -168,22 +163,9 @@ public class NPCEventListener implements Listener {
         }
 
         // If not in conversation, check if nearby NPCs want to greet the player
-        plugin.debugLog("About to check through nearby entities for greeting");
-
-        // Check player's greeting cooldown
-        Long lastGreetTime = playerGreetingCooldown.getOrDefault(playerUUID, 0L);
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastGreetTime < 4000) {
-            return; // Player is still in cooldown, skip processing
-        }
-
-        // Update the player's greeting cooldown
-        playerGreetingCooldown.put(playerUUID, currentTime);
-
         double radius = 10.0;
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (!CitizensAPI.getNPCRegistry().isNPC(entity)) {
-                plugin.debugLog("Entity not an NPC, skipping.");
                 continue;
             }
 
@@ -202,7 +184,6 @@ public class NPCEventListener implements Listener {
                 String prompt = plugin.getConfig().getString("npcs." + npc.getName());
                 if (prompt != null && !prompt.isEmpty()) {
                     // Get the greeting for the NPC asynchronously
-                    plugin.debugLog("Requesting greeting asynchronously!");
                     conversationManager.getGreeting(player, npc).thenAccept(greeting -> {
                         if (greeting != null) {
                             Bukkit.getScheduler().runTask(plugin, () -> {
@@ -213,9 +194,11 @@ public class NPCEventListener implements Listener {
                                 if (!player.hasPlayedBefore()) {
                                     plugin.getHologramManager().showInteractionHologram(npc, player);
                                 }
+
+                                // Mark NPC as processing greeting so this doesn't trigger more than once
+                                npcsProcessingGreeting.remove(npc.getUniqueId());
                             });
                         }
-                        npcsProcessingGreeting.remove(npc.getUniqueId());
                     });
                 }
             }
@@ -232,7 +215,6 @@ public class NPCEventListener implements Listener {
     public void onPlayerLeave(PlayerQuitEvent event) {
         UUID playerUUID = event.getPlayer().getUniqueId();
         npcsProcessingGreeting.remove(playerUUID);
-        playerGreetingCooldown.remove(playerUUID);
         plugin.playerSemaphores.remove(playerUUID);
     }
 
