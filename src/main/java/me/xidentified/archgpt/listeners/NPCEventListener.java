@@ -118,39 +118,37 @@ public class NPCEventListener implements Listener {
         Location from = event.getFrom();
         Location to = event.getTo();
 
+        // Check if the player has changed worlds
+        if (!from.getWorld().equals(to.getWorld())) {
+            if (conversationManager.playerInConversation(playerUUID)) {
+                conversationManager.endConversation(playerUUID);
+                plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
+            }
+            // Update the last significant location to the new world's location
+            lastSignificantLocations.put(playerUUID, to.clone());
+            return;
+        }
+
         // Check if the player has moved a significant distance (e.g., 3 blocks)
         Location lastLocation = lastSignificantLocations.getOrDefault(playerUUID, from);
-        if (!from.getWorld().equals(to.getWorld()) || lastLocation.distanceSquared(to) < 9) {
+        if (lastLocation.distanceSquared(to) < 9) {
             return;
         }
 
         lastSignificantLocations.put(playerUUID, to.clone());
 
-        // Handle stuff if player is in conversation - walking away, change worlds, etc
+        // Handle stuff if player is in conversation - walking away, etc.
         if (this.plugin.getActiveConversations().containsKey(playerUUID)) {
             NPC npc = conversationManager.playerNPCMap.get(playerUUID);
 
             if (npc != null && npc.isSpawned()) {
                 Entity npcEntity = npc.getEntity();
-
-                // Check if player changed worlds
-                if (!npcEntity.getWorld().equals(player.getWorld())) {
-                    // End conversation if player is in a different world
+                double distance = player.getLocation().distance(npcEntity.getLocation());
+                if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
                     conversationManager.endConversation(playerUUID);
-                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
-                    return; // Skip further processing since conversation has ended
-                }
-
-                // Check if player strayed too far
-                if (npcEntity.getWorld().equals(player.getWorld())) {
-                    double distance = player.getLocation().distance(npcEntity.getLocation());
-                    if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
-                        conversationManager.endConversation(playerUUID);
-                        plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
-                    }
+                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
                 }
             }
-            return;
         }
 
         // If not in conversation, check if nearby NPCs want to greet the player

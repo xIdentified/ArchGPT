@@ -27,7 +27,7 @@ public class Messages {
             .withPlaceholder("message_color")
             .build();
     public static final Message GENERAL_NPC_MESSAGE = new MessageBuilder("general.npc_message")
-            .withDefault("<npc_name_color><npc_name>: <message_color><message>")
+            .withDefault("<npc_name_color><npc_name>: <hover:show_text:'<red>Click to report'><click:run_command:/reportnpcmessage><message_color><message></click></hover>")
             .withPlaceholder("npc_name")
             .withPlaceholder("npc_name_color")
             .withPlaceholder("message")

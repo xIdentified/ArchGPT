@@ -2,7 +2,6 @@ package me.xidentified.archgpt;
 
 import lombok.Getter;
 import net.citizensnpcs.api.npc.NPC;
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -88,7 +87,7 @@ public class HologramManager {
         armorStand = (ArmorStand) world.spawnEntity(spawnLocation, EntityType.ARMOR_STAND);
         armorStand.setVisible(false);
         armorStand.setGravity(false);
-        armorStand.customName(Component.text(text));
+        armorStand.setCustomName(text);
         armorStand.setCustomNameVisible(true);
         armorStand.setMarker(true);
 
@@ -127,7 +126,7 @@ public class HologramManager {
                 String displayText = loopedText.substring(startIndex, Math.min(endIndex, loopedText.length()));
 
                 // Display the substring of loopedText
-                hologram.customName(Component.text(displayText));
+                hologram.setCustomName(displayText);
 
                 // Update startIndex for the next iteration
                 startIndex = (startIndex + 1) % fullText.length(); // Reset after one full cycle
@@ -144,7 +143,7 @@ public class HologramManager {
         animationTask = new BukkitRunnable() {
             @Override
             public void run() {
-                armorStand.customName(Component.text(animations[animationState]));
+                armorStand.setCustomName((animations[animationState]));
                 animationState = (animationState + 1) % animations.length;
             }
         };
