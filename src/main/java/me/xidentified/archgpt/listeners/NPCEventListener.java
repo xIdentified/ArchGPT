@@ -51,7 +51,7 @@ public class NPCEventListener implements Listener {
             }
 
             // Check if the player is already in an ongoing conversation
-            if (conversationManager.isInActiveConversation(player.getUniqueId())) {
+            if (conversationManager.playerInConversation(player.getUniqueId())) {
                 // Player is already in a conversation, exit method
                 return;
             }
@@ -81,14 +81,14 @@ public class NPCEventListener implements Listener {
             }
 
             // Check if player is already in conversation
-            if (!conversationManager.isInActiveConversation(playerUUID)) {
+            if (!conversationManager.playerInConversation(playerUUID)) {
                 return;
             }
 
             event.setCancelled(true); // Prevent chat messages from going out to everyone
 
             // Handle player reporting state
-            if (conversationManager.handleReportingState(player, event)) {
+            if (conversationManager.getConversationUtils().handleReportingState(player, event)) {
                 return;
             }
 
@@ -112,7 +112,7 @@ public class NPCEventListener implements Listener {
             UUID playerUUID = player.getUniqueId();
 
             //Check if player is already in conversation
-            if (conversationManager.isInActiveConversation(playerUUID)) {
+            if (conversationManager.playerInConversation(playerUUID)) {
                 event.setCancelled(true);
             }
         }
@@ -171,7 +171,7 @@ public class NPCEventListener implements Listener {
 
             NPC npc = CitizensAPI.getNPCRegistry().getNPC(entity);
 
-            if (npc.isSpawned() && conversationManager.isInLineOfSight(npc, player) && conversationManager.canComment(npc)) {
+            if (npc.isSpawned() && conversationManager.getConversationUtils().isInLineOfSight(npc, player) && conversationManager.getConversationUtils().canComment(npc)) {
                 if (!npcsProcessingGreeting.add(npc.getUniqueId())) {
                     // This NPC is already processing a greeting, skip to the next NPC
                     continue;
@@ -188,7 +188,7 @@ public class NPCEventListener implements Listener {
                         if (greeting != null) {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 // Utilize the sendNPCMessage method to send the greeting
-                                conversationManager.sendNPCMessage(player, npc.getUniqueId(), npc.getName(), greeting);
+                                conversationManager.getConversationUtils().sendNPCMessage(player, npc.getUniqueId(), npc.getName(), greeting);
 
                                 // For new players, a hologram appears prompting them to right-click the NPC to interact
                                 if (!player.hasPlayedBefore()) {
