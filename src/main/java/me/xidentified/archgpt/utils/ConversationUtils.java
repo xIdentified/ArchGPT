@@ -166,9 +166,9 @@ public class ConversationUtils {
         // Prepare and send formatted NPC message
         plugin.sendMessage(player,Messages.GENERAL_NPC_MESSAGE.formatted(
                 Placeholder.unparsed("npc_name", npcName),
-                Placeholder.parsed("npc_name_color", configHandler.getPlayerNameColor()),
+                Placeholder.parsed("npc_name_color", configHandler.getNpcNameColor()),
                 Placeholder.unparsed("message", message),
-                Placeholder.parsed("message_color", configHandler.getPlayerMessageColor())
+                Placeholder.parsed("message_color", configHandler.getNpcMessageColor())
         ));
     }
 
