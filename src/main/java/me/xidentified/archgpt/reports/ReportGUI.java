@@ -167,19 +167,19 @@ public class ReportGUI implements InventoryHolder, Listener {
 
     private void addNavigationItems() {
         if (this.totalPages > 1) { // Add navigation items only if more than one page is needed
-            ItemStack prevPageItem = createNavigationItem(Material.ARROW, "Previous Page", NamedTextColor.GREEN);
-            ItemStack nextPageItem = createNavigationItem(Material.ARROW, "Next Page", NamedTextColor.GREEN);
+            ItemStack prevPageItem = createNavigationItem("Previous Page");
+            ItemStack nextPageItem = createNavigationItem("Next Page");
 
             this.inventory.setItem(this.inventory.getSize() - 2, prevPageItem); // Slot for previous page
             this.inventory.setItem(this.inventory.getSize() - 1, nextPageItem); // Slot for next page
         }
     }
 
-    private ItemStack createNavigationItem(Material material, String name, NamedTextColor color) {
-        ItemStack item = new ItemStack(material);
+    private ItemStack createNavigationItem(String name) {
+        ItemStack item = new ItemStack(Material.ARROW);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(Component.text(name, color).decoration(TextDecoration.ITALIC, false));
+            meta.displayName(Component.text(name, NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
             item.setItemMeta(meta);
         }
         return item;

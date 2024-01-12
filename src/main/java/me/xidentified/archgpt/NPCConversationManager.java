@@ -1,5 +1,7 @@
 package me.xidentified.archgpt;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import lombok.Getter;
@@ -19,7 +21,6 @@ import com.google.gson.JsonObject;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -116,7 +117,7 @@ public class NPCConversationManager {
         List<Component> initialConversationState = new ArrayList<>();
         initialConversationState.add(npcIntroComponent);
 
-        // Store conversation state and start conversation
+        // Store conversation state
         playerNPCMap.put(playerUUID, npc);
         npcChatStatesCache.put(playerUUID, initialConversationState);
         synchronized (plugin.getActiveConversations()) {
@@ -127,6 +128,21 @@ public class NPCConversationManager {
                 Placeholder.unparsed("npc", npcName),
                 Placeholder.unparsed("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase")))
         ));
+
+        // Fetch past conversations asynchronously and update the conversation state
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName);
+            // Ensure this runs on the main thread
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                List<Component> updatedConversationState = new ArrayList<>(initialConversationState);
+                for (Conversation pastConversation : pastConversations) {
+                    Component pastMessage = Component.text(pastConversation.getMessage());
+                    updatedConversationState.add(pastMessage);
+                    plugin.debugLog("Added previous message: " + pastMessage);
+                }
+                npcChatStatesCache.put(playerUUID, updatedConversationState);
+            });
+        });
 
         // Start timeout
         conversationTimeoutManager.startConversationTimeout(playerUUID);
@@ -168,7 +184,7 @@ public class NPCConversationManager {
         Location playerLocation = player.getLocation();
 
         // Validate locations
-        if (!isValidLocation(npcLocation) || !isValidLocation(playerLocation)) {
+        if (isValidLocation(npcLocation) || isValidLocation(playerLocation)) {
             return false;
         }
 
@@ -186,7 +202,7 @@ public class NPCConversationManager {
     }
 
     private boolean isValidLocation(Location location) {
-        return location != null && Double.isFinite(location.getX()) && Double.isFinite(location.getY()) && Double.isFinite(location.getZ());
+        return location == null || !Double.isFinite(location.getX()) || !Double.isFinite(location.getY()) || !Double.isFinite(location.getZ());
     }
 
     public boolean canComment(NPC npc) {
@@ -205,6 +221,11 @@ public class NPCConversationManager {
         Component playerMessageComponent = playerMessage.color(playerMessageColor);
 
         player.sendMessage(playerNameComponent.append(playerMessageComponent));
+
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            Conversation conversation = new Conversation(player.getUniqueId(), "NPC_NAME", PlainTextComponentSerializer.plainText().serialize(playerMessage), System.currentTimeMillis());
+            plugin.getConversationDAO().saveConversation(conversation);
+        });
     }
 
     public void sendNPCMessage(Player player, UUID playerUUID, String npcName, Component response) {
@@ -224,26 +245,39 @@ public class NPCConversationManager {
             Component npcMessageComponent = response.color(npcMessageColor);
             sendIndividualNPCMessage(player, playerUUID, npcName, npcNameColor, npcMessageComponent);
         }
+
+        // Save NPC's message
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            Conversation conversation = new Conversation(player.getUniqueId(), npcName, PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
+            plugin.getConversationDAO().saveConversation(conversation);
+        });
     }
 
     private void sendIndividualNPCMessage(Player player, UUID playerUUID, String npcName, TextColor npcNameColor, Component npcMessageComponent) {
         Component npcNameComponent = Component.text(npcName + ": ")
                 .color(npcNameColor);
-
         String uniqueMessageIdentifier = playerUUID.toString() + "_" + System.currentTimeMillis();
 
-        Component messageComponent = npcNameComponent.append(npcMessageComponent)
-                .hoverEvent(HoverEvent.showText(Component.text("Click to report", NamedTextColor.RED)))
-                .clickEvent(ClickEvent.runCommand("/reportnpcmessage " + uniqueMessageIdentifier));
+        if (plugin.getActiveConversations().containsKey(playerUUID)) {
+            // Player is in a conversation, attach hover and click events
+            Component messageComponent = npcNameComponent.append(npcMessageComponent)
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to report", NamedTextColor.RED)))
+                    .clickEvent(ClickEvent.runCommand("/reportnpcmessage " + uniqueMessageIdentifier));
 
-        player.sendMessage(messageComponent);
+            player.sendMessage(messageComponent);
+        } else {
+            // Player is not in a conversation, send message without report option
+            player.sendMessage(npcNameComponent.append(npcMessageComponent));
+        }
     }
 
     public boolean isInActiveConversation(UUID playerUUID) {
         return plugin.getActiveConversations().containsKey(playerUUID);
     }
 
-    public boolean handleReportingState(Player player, UUID playerUUID, AsyncChatEvent event) {
+    public boolean handleReportingState(Player player, AsyncChatEvent event) {
+        UUID playerUUID = player.getUniqueId();
+
         if (plugin.getReportManager().selectingReportTypePlayers.contains(playerUUID)) {
             plugin.sendMessage(player, Messages.REPORT_SELECT_TYPE);
             event.setCancelled(true);
@@ -272,16 +306,18 @@ public class NPCConversationManager {
     }
 
 
-    public boolean handleCancelCommand(Player player, UUID playerUUID, String message) {
+    public boolean handleCancelCommand(Player player, String message) {
         if (message.equalsIgnoreCase(plugin.getConfig().getString("conversation_end_phrase", "cancel"))) {
             plugin.sendMessage(player, Messages.CONVERSATION_ENDED);
-            endConversation(playerUUID);
+            endConversation(player.getUniqueId());
             return true;
         }
         return false;
     }
 
-    public void processPlayerMessage(Player player, UUID playerUUID, Component playerMessage, HologramManager hologramManager) {
+    public void processPlayerMessage(Player player, Component playerMessage, HologramManager hologramManager) {
+        UUID playerUUID = player.getUniqueId();
+
         if (PlainTextComponentSerializer.plainText().serialize(playerMessage).length() < configHandler.getMinCharLength()) {
             plugin.sendMessage(player, Messages.MSG_TOO_SHORT.formatted(
                     Placeholder.unparsed("size", String.valueOf(configHandler.getMinCharLength()))
@@ -338,7 +374,11 @@ public class NPCConversationManager {
 
         // Add the player's current message, with parsed placeholders
         JsonObject userMessageJson = new JsonObject();
-        String sanitizedPlayerMessage = StringEscapeUtils.escapeJson(PlainTextComponentSerializer.plainText().serialize(playerMessage));
+        Gson gson = new GsonBuilder().create();
+        String sanitizedPlayerMessage = gson.toJson(PlainTextComponentSerializer.plainText().serialize(playerMessage));
+
+        // Since gson.toJson() adds additional quotes, we need to remove them
+        sanitizedPlayerMessage = sanitizedPlayerMessage.substring(1, sanitizedPlayerMessage.length() - 1);
 
         userMessageJson.addProperty("role", "user");
         userMessageJson.addProperty("content", sanitizedPlayerMessage);
@@ -357,28 +397,36 @@ public class NPCConversationManager {
                 if (!plugin.getActiveConversations().containsKey(playerUUID)) return;
                 if (responseObject instanceof Pair<?, ?> rawPair) {
 
-                    if (rawPair.getLeft() instanceof Component response && rawPair.getRight() instanceof List) {
-                        List<Component> updatedConversationState = (List<Component>) rawPair.getRight();
+                    Object leftObject = rawPair.getLeft();
+                    Object rightObject = rawPair.getRight();
 
-                        if (!conversationState.equals(updatedConversationState)) {
-                            npcChatStatesCache.put(playerUUID, updatedConversationState);
-                        }
-                        NPC npc = playerNPCMap.get(playerUUID);
-                        String npcName = npc.getName();
-                        new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                if (plugin.getActiveConversations().containsKey(playerUUID)) {
-                                    sendNPCMessage(player, playerUUID, npcName, response);
-                                    npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
-                                    Conversation conversation = new Conversation(player.getUniqueId(), npc.getName(), PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
-                                    plugin.getConversationDAO().saveConversation(conversation);
-                                }
-                                hologramManager.removePlayerHologram(playerUUID);
+                    if (leftObject instanceof Component response && rightObject instanceof List<?> rawList) {
+                        // Check if the list contains Components
+                        if (rawList.stream().allMatch(item -> item instanceof Component)) {
+                            @SuppressWarnings("unchecked") // Safe cast after checking all elements
+                            List<Component> updatedConversationState = (List<Component>) rawList;
+
+                            if (!conversationState.equals(updatedConversationState)) {
+                                npcChatStatesCache.put(playerUUID, updatedConversationState);
                             }
-                        }.runTaskLater(plugin, 20L);
-                        updateConversationTokenCounter(playerUUID);
-                        getConversationTimeoutManager().resetConversationTimeout(playerUUID);
+
+                            NPC npc = playerNPCMap.get(playerUUID);
+                            String npcName = npc.getName();
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    if (plugin.getActiveConversations().containsKey(playerUUID)) {
+                                        sendNPCMessage(player, playerUUID, npcName, response);
+                                        npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
+                                        Conversation conversation = new Conversation(player.getUniqueId(), npc.getName(), PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
+                                        plugin.getConversationDAO().saveConversation(conversation);
+                                    }
+                                    hologramManager.removePlayerHologram(playerUUID);
+                                }
+                            }.runTaskLater(plugin, 20L);
+                            updateConversationTokenCounter(playerUUID);
+                            getConversationTimeoutManager().resetConversationTimeout(playerUUID);
+                        }
                     }
                 }
             }

@@ -67,8 +67,14 @@ public class ArchGPT extends JavaPlugin {
 
     @Override
     public void onEnable() {
-
         try {
+            // Check if Citizens is installed and enabled
+            if (Bukkit.getPluginManager().getPlugin("Citizens") == null || !Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Citizens")).isEnabled()) {
+                getLogger().severe("Citizens is required for ArchGPT to work. Please install Citizens and restart the server.");
+                Bukkit.getPluginManager().disablePlugin(this);
+                return;
+            }
+
             this.configHandler = new ArchGPTConfig(this);
             this.hologramManager = new HologramManager(this);
             this.reportManager = new ReportManager(this);
@@ -107,11 +113,12 @@ public class ArchGPT extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
 
             // Register commands
-            Objects.requireNonNull(this.getCommand("npcreports")).setExecutor(new AdminReportCommandExecutor(this));
-            Objects.requireNonNull(this.getCommand("selectreporttype")).setExecutor(new ReportTypeCommandExecutor(this));
-            Objects.requireNonNull(this.getCommand("reportnpcmessage")).setExecutor(new ReportTypeCommandExecutor(this));
-            Objects.requireNonNull(this.getCommand("archgpt")).setExecutor(new ArchGPTCommand(this));
-            Objects.requireNonNull(this.getCommand("archgpt")).setTabCompleter(new ArchGPTCommand(this));
+            Objects.requireNonNull(getCommand("npcreports")).setExecutor(new AdminReportCommandExecutor(this));
+            Objects.requireNonNull(getCommand("selectreporttype")).setExecutor(new ReportTypeCommandExecutor(this));
+            Objects.requireNonNull(getCommand("reportnpcmessage")).setExecutor(new ReportTypeCommandExecutor(this));
+
+            Objects.requireNonNull(getCommand("archgpt")).setExecutor(new ArchGPTCommand(this));
+            Objects.requireNonNull(getCommand("archgpt")).setTabCompleter(new ArchGPTCommand(this));
 
             // Set storage type
             String storageType = getConfig().getString("storage.type", "sqlite");

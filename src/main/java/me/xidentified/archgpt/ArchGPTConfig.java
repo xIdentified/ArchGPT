@@ -98,16 +98,28 @@ public class ArchGPTConfig {
     public void printConfigToConsole() {
         // ANSI color codes
         String RESET = "\u001B[0m";
-        String GREEN = "\u001B[32m";
         String YELLOW = "\u001B[33m";
+        String DARK_BLUE = "\u001B[34m"; // Dark Blue ANSI code
+        String LIGHT_BLUE = "\u001B[94m"; // Light Blue ANSI code
 
-        logger.info(GREEN + "----- ArchGPT Configuration -----" + RESET);
-        logger.info(YELLOW + "Debug Mode: " + debugMode + RESET);
-        logger.info(YELLOW + "Max API Calls Per Second: " + maxApiCallsPerSecond + RESET);
-        logger.info(YELLOW + "NPC Chat Timeout (Millis): " + npcChatTimeoutMillis + RESET);
-        logger.info(YELLOW + "Default Prompt: " + defaultPrompt + RESET);
-        logger.info(YELLOW + "ChatGPT Engine: " + chatGptEngine + RESET);
-        logger.info(GREEN + "--------------------------------" + RESET);
+        String asciiArt =
+                "\n" + LIGHT_BLUE +
+                        "    _          _    ___ ___ _____ \n" + LIGHT_BLUE +
+                        "   /_\\  _ _ __| |_ / __| _ \\_   _|\n" + LIGHT_BLUE +
+                        "  / _ \\| '_/ _| ' \\ (_ |  _/ | |  \n" + LIGHT_BLUE +
+                        " /_/ \\_\\_| \\__|_||_\\___|_|   |_|  \n" + LIGHT_BLUE +
+                        "                                  \n"
+                        + RESET + DARK_BLUE + "--- Settings ---\n" + RESET +
+                        YELLOW + "Debug Mode: " + debugMode + "\n" + YELLOW +
+                        "ChatGPT Engine: " + chatGptEngine + "\n" + YELLOW +
+                        "Max API Calls Per Second: " + maxApiCallsPerSecond + "\n" + YELLOW +
+                        "Base Prompt: " + defaultPrompt + "\n" + YELLOW +
+                        "NPC Memory Duration: " + npcMemoryDuration + "\n" + YELLOW +
+                        "Conversation Timeout: " + npcChatTimeoutMillis + "\n" + YELLOW +
+                        "Split Long Chats: " + shouldSplitLongMsg + "\n";
+
+        logger.info(LIGHT_BLUE + asciiArt + RESET);
+
     }
 
 }

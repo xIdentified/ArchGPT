@@ -1,13 +1,14 @@
 package me.xidentified.archgpt;
 
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.xidentified.archgpt.utils.LocaleUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -109,7 +110,8 @@ public class ChatRequestHandler {
                 return responseComponent;
             } else {
                 // Additional processing for non-greeting requests
-                String sanitizedPlayerMessage = StringEscapeUtils.escapeJson(PlainTextComponentSerializer.plainText().serialize(playerMessageComponent));
+                Gson gson = new GsonBuilder().create();
+                String sanitizedPlayerMessage = gson.toJson(PlainTextComponentSerializer.plainText().serialize(playerMessageComponent));
 
                 if (conversationState.size() > ArchGPTConstants.MAX_CONVERSATION_STATE_SIZE * 2) {
                     conversationState.subList(0, 2).clear();

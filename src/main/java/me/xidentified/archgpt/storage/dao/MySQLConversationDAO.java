@@ -1,13 +1,8 @@
 package me.xidentified.archgpt.storage.dao;
 
-import me.xidentified.archgpt.storage.dao.ConversationDAO;
 import me.xidentified.archgpt.storage.model.Conversation;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +17,16 @@ public class MySQLConversationDAO implements ConversationDAO {
         this.username = username;
         this.password = password;
         initializeDatabase();
+        addIndexOnNPCName();
+    }
+
+    private void addIndexOnNPCName() {
+        try (Connection conn = DriverManager.getConnection(url, username, password);
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_npc_name ON conversations (npc_name);");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void initializeDatabase() {
@@ -57,9 +62,9 @@ public class MySQLConversationDAO implements ConversationDAO {
     @Override
     public List<Conversation> getConversations(UUID playerUUID, String npcName) {
         List<Conversation> conversations = new ArrayList<>();
+        String query = "SELECT * FROM conversations WHERE player_uuid = ? AND npc_name = ? ORDER BY timestamp DESC LIMIT 100";
         try (Connection conn = DriverManager.getConnection(url, username, password);
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM conversations WHERE player_uuid = ? AND npc_name = ?")) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, playerUUID.toString());
             stmt.setString(2, npcName);
             try (ResultSet rs = stmt.executeQuery()) {

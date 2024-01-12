@@ -88,18 +88,18 @@ public class NPCEventListener implements Listener {
             event.setCancelled(true); // Prevent chat messages from going out to everyone
 
             // Handle player reporting state
-            if (conversationManager.handleReportingState(player, playerUUID, event)) {
+            if (conversationManager.handleReportingState(player, event)) {
                 return;
             }
 
             // If the player types 'cancel', end the conversation
-            if (conversationManager.handleCancelCommand(player, playerUUID, PlainTextComponentSerializer.plainText().serialize(playerMessageComponent))) {
+            if (conversationManager.handleCancelCommand(player, PlainTextComponentSerializer.plainText().serialize(playerMessageComponent))) {
                 event.setCancelled(true);
                 return;
             }
 
             // Process the player's message
-            conversationManager.processPlayerMessage(player, playerUUID, playerMessageComponent, hologramManager);
+            conversationManager.processPlayerMessage(player, playerMessageComponent, hologramManager);
 
             lastChatTimestamps.put(playerUUID, now);
         }
@@ -159,11 +159,11 @@ public class NPCEventListener implements Listener {
                     }
                 }
             }
-            return; // Exit to stop greeting from sending again
+            return;
         }
 
         // If not in conversation, check if nearby NPCs want to greet the player
-        double radius = 10.0;
+        double radius = 4.0;
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (!CitizensAPI.getNPCRegistry().isNPC(entity)) {
                 continue;
