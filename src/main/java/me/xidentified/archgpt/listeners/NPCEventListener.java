@@ -40,20 +40,21 @@ public class NPCEventListener implements Listener {
     // Event listener for right-clicking an NPC
     @EventHandler
     public void onNPCRightClick(NPCRightClickEvent event) {
-        plugin.getLogger().info("NPC right-clicked: " + event.getNPC().getName());
-
         synchronized (conversationManager.npcChatStatesCache) {
             Player player = event.getClicker();
             NPC npc = event.getNPC();
 
-            if (configHandler.getNpcPrompt(npc.getName(), player) == null) {
-                // NPC is not in the config, exit method
+            // Check if the NPC is configured in config.yml
+            String npcPrompt = configHandler.getNpcPrompt(npc.getName(), player);
+            if (npcPrompt == null || npcPrompt.isEmpty()) {
+                // NPC is not configured, exit method
+                plugin.debugLog("NPC '" + npc.getName() + "' is not configured in config.yml.");
                 return;
             }
 
             // Check if the player is already in an ongoing conversation
             if (conversationManager.playerInConversation(player.getUniqueId())) {
-                // Player is already in a conversation, exit method
+                plugin.debugLog("Player '" + player.getName() + "' is already in a conversation.");
                 return;
             }
 

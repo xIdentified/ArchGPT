@@ -15,7 +15,6 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
@@ -125,40 +124,15 @@ public class ConversationUtils {
         return false;
     }
 
-    public static TextColor fromConfigString(String colorCode) {
-
-        if (colorCode == null || colorCode.isEmpty()) {
-            return NamedTextColor.WHITE; // Default color if the code is empty
-        }
-
-        // Check if it's a legacy Minecraft color code
-        if (colorCode.startsWith("&")) {
-            Component translatedComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(colorCode + "text");
-            if (translatedComponent.color() != null) {
-                return translatedComponent.color();
-            }
-        }
-
-        // Check if it's a Hex color code
-        if (colorCode.startsWith("#")) {
-            try {
-                int hexValue = Integer.parseInt(colorCode.substring(1), 16);
-                return TextColor.color(hexValue);
-            } catch (NumberFormatException e) {
-                // Invalid Hex color code, fall back to default
-            }
-        }
-
-        return NamedTextColor.WHITE; // Default color if the code is invalid
-    }
-
     public void sendPlayerMessage(Player player, Component playerMessage) {
         String messageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
 
-        // Format and send player message using Messages class
-        plugin.sendMessage(player, Messages.GENERAL_PLAYER_MESSAGE
-                .replacePlaceholder("player_name", "You")
-                .replacePlaceholder("message", messageText));
+        plugin.sendMessage(player, Messages.GENERAL_PLAYER_MESSAGE.formatted(
+                Placeholder.unparsed("player_name", "You"),
+                Placeholder.parsed("player_name_color", configHandler.getPlayerNameColor()),
+                Placeholder.unparsed("message", messageText),
+                Placeholder.parsed("message_color", configHandler.getPlayerMessageColor())
+                ));
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             Conversation conversation = new Conversation(player.getUniqueId(), "NPC_NAME", PlainTextComponentSerializer.plainText().serialize(playerMessage), System.currentTimeMillis());
@@ -189,10 +163,13 @@ public class ConversationUtils {
     }
 
     private void sendMessageFormatted(Player player, String message, String npcName) {
-        // Format and send NPC message using Messages class
-        plugin.sendMessage(player, Messages.GENERAL_NPC_MESSAGE
-                .replacePlaceholder("npc_name", npcName)
-                .replacePlaceholder("message", message));
+        // Prepare and send formatted NPC message
+        plugin.sendMessage(player,Messages.GENERAL_NPC_MESSAGE.formatted(
+                Placeholder.unparsed("npc_name", npcName),
+                Placeholder.parsed("npc_name_color", configHandler.getPlayerNameColor()),
+                Placeholder.unparsed("message", message),
+                Placeholder.parsed("message_color", configHandler.getPlayerMessageColor())
+        ));
     }
 
     private void sendIndividualNPCMessage(Player player, UUID playerUUID, String npcName, TextColor npcNameColor, Component npcMessageComponent) {

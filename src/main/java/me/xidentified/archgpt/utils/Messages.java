@@ -20,14 +20,18 @@ public class Messages {
             .withPlaceholder("size")
             .build();
     public static final Message GENERAL_PLAYER_MESSAGE = new MessageBuilder("general.player_message")
-            .withDefault("<player_name>: <message>")
+            .withDefault("<player_name_color><player_name>: <message_color><message>")
             .withPlaceholder("player_name")
+            .withPlaceholder("player_name_color")
             .withPlaceholder("message")
+            .withPlaceholder("message_color")
             .build();
     public static final Message GENERAL_NPC_MESSAGE = new MessageBuilder("general.npc_message")
-            .withDefault("<npc_name>: <message>")
+            .withDefault("<npc_name_color><npc_name>: <message_color><message>")
             .withPlaceholder("npc_name")
+            .withPlaceholder("npc_name_color")
             .withPlaceholder("message")
+            .withPlaceholder("message_color")
             .build();
 
     // Conversation

@@ -248,7 +248,7 @@ public class NPCConversationManager {
                                 @Override
                                 public void run() {
                                     if (plugin.getActiveConversations().containsKey(playerUUID)) {
-                                        conversationUtils.sendNPCMessage(player, playerUUID, npcName, response);
+                                        conversationUtils.sendNPCMessage(player, npcName, response);
                                         npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
                                         Conversation conversation = new Conversation(player.getUniqueId(), npc.getName(), PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
                                         plugin.getConversationDAO().saveConversation(conversation);
