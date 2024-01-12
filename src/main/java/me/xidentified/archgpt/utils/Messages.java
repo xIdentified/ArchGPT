@@ -15,12 +15,19 @@ public class Messages {
     public static final Message GENERAL_CMD_NO_PERM = new MessageBuilder("general.cmd.no_perm")
             .withDefault("<negative>You don't have permission to use this command.")
             .build();
-    public static final Message GENERAL_PLAYER_NOT_FOUND = new MessageBuilder("general.player_not_found")
-            .withDefault("<negative>Player not found: <name>")
-            .build();
     public static final Message MSG_TOO_SHORT = new MessageBuilder("general.msg_too_short")
             .withDefault("<negative>Your message is too short, use at least <size> characters.")
             .withPlaceholder("size")
+            .build();
+    public static final Message GENERAL_PLAYER_MESSAGE = new MessageBuilder("general.player_message")
+            .withDefault("<player_name>: <message>")
+            .withPlaceholder("player_name")
+            .withPlaceholder("message")
+            .build();
+    public static final Message GENERAL_NPC_MESSAGE = new MessageBuilder("general.npc_message")
+            .withDefault("<npc_name>: <message>")
+            .withPlaceholder("npc_name")
+            .withPlaceholder("message")
             .build();
 
     // Conversation

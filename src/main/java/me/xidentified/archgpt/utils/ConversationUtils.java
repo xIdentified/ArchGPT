@@ -1,6 +1,5 @@
 package me.xidentified.archgpt.utils;
 
-import io.papermc.paper.event.player.AsyncChatEvent;
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.ArchGPTConfig;
 import me.xidentified.archgpt.ArchGPTConstants;
@@ -21,6 +20,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -93,7 +93,7 @@ public class ConversationUtils {
         return System.currentTimeMillis() - lastCommentTime > commentCooldown;
     }
 
-    public boolean handleReportingState(Player player, AsyncChatEvent event) {
+    public boolean handleReportingState(Player player, AsyncPlayerChatEvent event) {
         UUID playerUUID = player.getUniqueId();
 
         if (plugin.getReportManager().selectingReportTypePlayers.contains(playerUUID)) {
@@ -103,7 +103,9 @@ public class ConversationUtils {
         }
 
         if (plugin.getReportManager().isInReportingState(playerUUID)) {
-            Component feedback = event.originalMessage();
+            String msg = event.getMessage();
+            Component feedback = Component.text(msg);
+
             String reportType = plugin.getReportManager().getSelectedReportType(playerUUID);
             NPC npc = manager.playerNPCMap.get(playerUUID);
             String npcLastMessage = npc.data().get("last_message");
@@ -151,15 +153,12 @@ public class ConversationUtils {
     }
 
     public void sendPlayerMessage(Player player, Component playerMessage) {
-        TextColor playerNameColor = fromConfigString(configHandler.getPlayerNameColor());
-        TextColor playerMessageColor = fromConfigString(configHandler.getPlayerMessageColor());
+        String messageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
 
-        Component playerNameComponent = Component.text("You: ")
-                .color(playerNameColor);
-
-        Component playerMessageComponent = playerMessage.color(playerMessageColor);
-
-        player.sendMessage(playerNameComponent.append(playerMessageComponent));
+        // Format and send player message using Messages class
+        plugin.sendMessage(player, Messages.GENERAL_PLAYER_MESSAGE
+                .replacePlaceholder("player_name", "You")
+                .replacePlaceholder("message", messageText));
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             Conversation conversation = new Conversation(player.getUniqueId(), "NPC_NAME", PlainTextComponentSerializer.plainText().serialize(playerMessage), System.currentTimeMillis());
@@ -167,23 +166,19 @@ public class ConversationUtils {
         });
     }
 
-    public void sendNPCMessage(Player player, UUID playerUUID, String npcName, Component response) {
-        TextColor npcNameColor = fromConfigString(configHandler.getNpcNameColor());
-        TextColor npcMessageColor = fromConfigString(configHandler.getNpcMessageColor());
-
-
+    public void sendNPCMessage(Player player, String npcName, Component response) {
         boolean splitLongMessages = configHandler.isShouldSplitLongMsg();
 
         if (splitLongMessages) {
             // Split the response into parts and send each part as a separate message
             response.children().forEach(part -> {
-                Component npcMessageComponent = part.color(npcMessageColor);
-                sendIndividualNPCMessage(player, playerUUID, npcName, npcNameColor, npcMessageComponent);
+                String partText = PlainTextComponentSerializer.plainText().serialize(part);
+                sendMessageFormatted(player, partText, npcName);
             });
         } else {
             // Send the entire response as a single message
-            Component npcMessageComponent = response.color(npcMessageColor);
-            sendIndividualNPCMessage(player, playerUUID, npcName, npcNameColor, npcMessageComponent);
+            String responseText = PlainTextComponentSerializer.plainText().serialize(response);
+            sendMessageFormatted(player, responseText, npcName);
         }
 
         // Save NPC's message
@@ -191,6 +186,13 @@ public class ConversationUtils {
             Conversation conversation = new Conversation(player.getUniqueId(), npcName, PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
             plugin.getConversationDAO().saveConversation(conversation);
         });
+    }
+
+    private void sendMessageFormatted(Player player, String message, String npcName) {
+        // Format and send NPC message using Messages class
+        plugin.sendMessage(player, Messages.GENERAL_NPC_MESSAGE
+                .replacePlaceholder("npc_name", npcName)
+                .replacePlaceholder("message", message));
     }
 
     private void sendIndividualNPCMessage(Player player, UUID playerUUID, String npcName, TextColor npcNameColor, Component npcMessageComponent) {

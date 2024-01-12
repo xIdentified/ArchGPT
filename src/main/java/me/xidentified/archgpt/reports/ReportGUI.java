@@ -37,7 +37,7 @@ public class ReportGUI implements InventoryHolder, Listener {
         int slotsPerPage = 45; // Assuming the last row is reserved for navigation
         this.totalPages = (int) Math.ceil((double) reports.size() / slotsPerPage);
         int size = Math.min(54, (slotsPerPage + 9)); // 54 is max inventory size with 9 slots for navigation
-        this.inventory = Bukkit.createInventory(this, size, Component.text("Reports").decoration(TextDecoration.ITALIC, false));
+        this.inventory = Bukkit.createInventory(this, size, "Reports");
     }
 
     public void openGUI(Player admin) {
@@ -49,46 +49,50 @@ public class ReportGUI implements InventoryHolder, Listener {
             return;
         }
 
+        populateInventoryWithReports(reports);
+        admin.openInventory(this.inventory);
+    }
+
+    private void populateInventoryWithReports(List<Report> reports) {
         int start = this.currentPage * 45;
         int end = Math.min(start + 45, reports.size());
 
         this.inventory.clear();
         slotToReportIdMap.clear();
 
-        int slot = 0;
-        for (int i = start; i < end; i++) {
+        for (int i = start, slot = 0; i < end; i++, slot++) {
             Report report = reports.get(i);
-            ItemStack reportItem = new ItemStack(Material.WRITABLE_BOOK);
-            ItemMeta meta = reportItem.getItemMeta();
-
-            if (meta != null) {
-                Component displayName = Component.text("Report by ", NamedTextColor.GREEN)
-                        .append(Component.text(report.getPlayerName()))
-                        .decoration(TextDecoration.ITALIC, false);
-                meta.displayName(displayName);
-
-                List<Component> lore = new ArrayList<>();
-                addFormattedLore(lore, "NPC Name: ", report.getNpcName());
-                addFormattedLore(lore, "Response: ", report.getNpcResponse());
-                addFormattedLore(lore, "Feedback: ", report.getFeedback());
-                addFormattedLore(lore, "Timestamp: ", "'" + report.getFormattedTimestamp() + "'");
-                lore.add(Component.empty());
-                lore.add(Component.text("Shift + Right-Click to Remove", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-
-                meta.lore(lore);
-                reportItem.setItemMeta(meta);
-
-                // Update the slotToReportIdMap for the current page
-                slotToReportIdMap.put(slot, report.getId());
-                slot++;
-            }
-
-            this.inventory.addItem(reportItem);
+            ItemStack reportItem = createReportItem(report);
+            this.inventory.setItem(slot, reportItem);
+            slotToReportIdMap.put(slot, report.getId());
         }
 
         addNavigationItems();
+    }
 
-        admin.openInventory(this.inventory);
+    private ItemStack createReportItem(Report report) {
+        ItemStack reportItem = new ItemStack(Material.WRITABLE_BOOK);
+        ItemMeta meta = reportItem.getItemMeta();
+
+        if (meta != null) {
+            Component displayName = Component.text("Report by ", NamedTextColor.GREEN)
+                    .append(Component.text(report.getPlayerName()))
+                    .decoration(TextDecoration.ITALIC, false);
+            meta.displayName(displayName);
+
+            List<Component> lore = new ArrayList<>();
+            addFormattedLore(lore, "NPC Name: ", report.getNpcName());
+            addFormattedLore(lore, "Response: ", report.getNpcResponse());
+            addFormattedLore(lore, "Feedback: ", report.getFeedback());
+            addFormattedLore(lore, "Timestamp: ", "'" + report.getFormattedTimestamp() + "'");
+            lore.add(Component.empty());
+            lore.add(Component.text("Shift + Right-Click to Remove", NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+
+            meta.lore(lore);
+            reportItem.setItemMeta(meta);
+        }
+
+        return reportItem;
     }
 
     @EventHandler

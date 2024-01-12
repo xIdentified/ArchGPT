@@ -1,6 +1,5 @@
 package me.xidentified.archgpt.listeners;
 
-import io.papermc.paper.event.player.AsyncChatEvent;
 import me.xidentified.archgpt.*;
 import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.CitizensAPI;
@@ -41,6 +40,8 @@ public class NPCEventListener implements Listener {
     // Event listener for right-clicking an NPC
     @EventHandler
     public void onNPCRightClick(NPCRightClickEvent event) {
+        plugin.getLogger().info("NPC right-clicked: " + event.getNPC().getName());
+
         synchronized (conversationManager.npcChatStatesCache) {
             Player player = event.getClicker();
             NPC npc = event.getNPC();
@@ -64,11 +65,13 @@ public class NPCEventListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerChat(AsyncChatEvent event) {
+    public void onPlayerChat(AsyncPlayerChatEvent event) {
         synchronized (conversationManager.npcChatStatesCache) {
             Player player = event.getPlayer();
             UUID playerUUID = player.getUniqueId();
-            Component playerMessageComponent = event.originalMessage();
+            String message = event.getMessage();
+
+            Component playerMessageComponent = Component.text(message);
             HologramManager hologramManager = new HologramManager(plugin);
             long now = System.currentTimeMillis();
             long lastChatTimestamp = lastChatTimestamps.getOrDefault(playerUUID, 0L);
@@ -102,19 +105,6 @@ public class NPCEventListener implements Listener {
             conversationManager.processPlayerMessage(player, playerMessageComponent, hologramManager);
 
             lastChatTimestamps.put(playerUUID, now);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void deprecatedOnPlayerChat(AsyncPlayerChatEvent event) {
-        synchronized (conversationManager.npcChatStatesCache) {
-            Player player = event.getPlayer();
-            UUID playerUUID = player.getUniqueId();
-
-            //Check if player is already in conversation
-            if (conversationManager.playerInConversation(playerUUID)) {
-                event.setCancelled(true);
-            }
         }
     }
 
@@ -188,7 +178,7 @@ public class NPCEventListener implements Listener {
                         if (greeting != null) {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 // Utilize the sendNPCMessage method to send the greeting
-                                conversationManager.getConversationUtils().sendNPCMessage(player, npc.getUniqueId(), npc.getName(), greeting);
+                                conversationManager.getConversationUtils().sendNPCMessage(player, npc.getName(), greeting);
 
                                 // For new players, a hologram appears prompting them to right-click the NPC to interact
                                 if (!player.hasPlayedBefore()) {

@@ -4,8 +4,7 @@ version: '${project.version}'
 main: me.xidentified.archgpt.ArchGPT
 api-version: '1.20'
 
-depend:
-  - Citizens
+depend: [Citizens]
 softdepend: [PlaceholderAPI, MMOCore]
 
 libraries:
