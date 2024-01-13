@@ -14,10 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +26,6 @@ public class NPCEventListener implements Listener {
     private final ArchGPTConfig configHandler;
     private final Set<UUID> npcsProcessingGreeting = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Long> lastChatTimestamps = new ConcurrentHashMap<>();
-    private final Map<UUID, Location> lastSignificantLocations = new ConcurrentHashMap<>();
 
     public NPCEventListener(ArchGPT plugin, NPCConversationManager conversationManager, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -111,47 +107,10 @@ public class NPCEventListener implements Listener {
 
     //Listener for player movement for NPC greetings, and to end conversation if player walks away
     @EventHandler
-    public void onPlayerMove(PlayerMoveEvent event) {
+    public void onPlayerGreeting(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        UUID playerUUID = player.getUniqueId();
 
-        Location from = event.getFrom();
-        Location to = event.getTo();
-
-        // Check if the player has changed worlds
-        if (!from.getWorld().equals(to.getWorld())) {
-            if (conversationManager.playerInConversation(playerUUID)) {
-                conversationManager.endConversation(playerUUID);
-                plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
-            }
-            // Update the last significant location to the new world's location
-            lastSignificantLocations.put(playerUUID, to.clone());
-            return;
-        }
-
-        // Check if the player has moved a significant distance (e.g., 3 blocks)
-        Location lastLocation = lastSignificantLocations.getOrDefault(playerUUID, from);
-        if (lastLocation.distanceSquared(to) < 9) {
-            return;
-        }
-
-        lastSignificantLocations.put(playerUUID, to.clone());
-
-        // Handle stuff if player is in conversation - walking away, etc.
-        if (this.plugin.getActiveConversations().containsKey(playerUUID)) {
-            NPC npc = conversationManager.playerNPCMap.get(playerUUID);
-
-            if (npc != null && npc.isSpawned()) {
-                Entity npcEntity = npc.getEntity();
-                double distance = player.getLocation().distance(npcEntity.getLocation());
-                if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
-                    conversationManager.endConversation(playerUUID);
-                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
-                }
-            }
-        }
-
-        // If not in conversation, check if nearby NPCs want to greet the player
+        // Check if nearby NPCs want to greet the player
         double radius = 4.0;
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (!CitizensAPI.getNPCRegistry().isNPC(entity)) {
@@ -165,7 +124,6 @@ public class NPCEventListener implements Listener {
                     // This NPC is already processing a greeting, skip to the next NPC
                     continue;
                 }
-
                 // Update the cooldown for the NPC
                 conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
 
@@ -195,9 +153,31 @@ public class NPCEventListener implements Listener {
     }
 
     @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
+    public void onPlayerLeavesConversation(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        lastSignificantLocations.put(player.getUniqueId(), player.getLocation());
+        UUID playerUUID = player.getUniqueId();
+        NPC npc = conversationManager.playerNPCMap.get(playerUUID);
+        Location to = event.getTo();
+
+        // Check if the player is in an active conversation
+        if (!this.plugin.getActiveConversations().containsKey(playerUUID)) {
+            return;
+        }
+
+        // Handle world change
+        if (player.getWorld() != npc.getEntity().getWorld()) {
+            conversationManager.endConversation(playerUUID);
+            plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
+        } else {
+            // Check if player strayed too far from the NPC
+            if (npc.isSpawned()) {
+                double distance = to.distanceSquared(npc.getEntity().getLocation());
+                if (distance > 14) {
+                    conversationManager.endConversation(playerUUID);
+                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
+                }
+            }
+        }
     }
 
     @EventHandler
