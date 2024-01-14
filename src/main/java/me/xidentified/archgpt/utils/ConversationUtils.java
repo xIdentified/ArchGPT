@@ -151,7 +151,6 @@ public class ConversationUtils {
 
     private void sendMessageFormatted(Player player, String message, String npcName) {
         // Prepare and send formatted NPC message
-        plugin.debugLog("Formatted NPC message: " + message);
         plugin.sendMessage(player, Messages.GENERAL_NPC_MESSAGE.formatted(
                 Placeholder.unparsed("npc_name", npcName),
                 Placeholder.parsed("npc_name_color", configHandler.getNpcNameColor()),

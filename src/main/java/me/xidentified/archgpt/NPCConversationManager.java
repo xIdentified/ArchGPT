@@ -45,18 +45,24 @@ public class NPCConversationManager {
     }
 
     public JsonObject createSystemMessage(NPC npc, Player player) {
+        String npcCharacter = npc.getName();
         JsonObject systemMessage = new JsonObject();
         systemMessage.addProperty("role", "system");
 
         // Use conversationUtils instance field
-        String combinedContext = this.conversationUtils.getCombinedContext(npc.getName(), player);
+        String combinedContext = this.conversationUtils.getCombinedContext(npcCharacter, player);
 
         // Construct the system message content
-        String systemMessageContent = "Your name is " + npc.getName() + ". You are an intelligent NPC in a Minecraft Java server " +
-                "capable of conversational interaction. Do not make any reference to being an AI, it ruins immersion. " +
-                "Always respond as your living character, utilizing the following context: " + combinedContext;
-        systemMessage.addProperty("content", systemMessageContent);
+        String systemMessageContent = String.format(
+                "You are %s, a resident of the vibrant world of Minecraft. " +
+                        "Known for your wisdom and familiarity with the realm, you interact with players in a casual, " +
+                        "friendly manner, making them feel part of an ongoing adventure. " +
+                        "Engage them with stories, observations, and comments that reflect your unique personality and knowledge. " +
+                        "Offer help or guidance only when they seek it, making your interactions feel natural and integral to their experience. " +
+                        "Remember, you're not just an NPC, you're a living, breathing part of this world. " +
+                        "Incorporate this context: %s", npcCharacter, combinedContext);
 
+        systemMessage.addProperty("content", systemMessageContent);
         return systemMessage;
     }
 
@@ -76,7 +82,8 @@ public class NPCConversationManager {
 
         // Get combined context for the NPC with the specific greeting
         String combinedContext = conversationUtils.getCombinedContext(npc.getName(), player);
-        String greetingContext = combinedContext + " A player known as " + player.getName() + " approaches you. How do you greet them?";
+        String greetingContext = combinedContext + " A player known as " + player.getName() + " approaches you. " +
+                "Please offer a concise and brief greeting consisting of only one or two sentences.";
 
         // Add user prompt message with combined context
         JsonObject userMessage = new JsonObject();

@@ -24,7 +24,7 @@ public class PlayerContextProvider {
         String playerHungerContext = getPlayerHungerContext();
         String mmocoreContext = isMMOCoreInstalled ? getMMOCoreContext() : "";
 
-        return String.format("%s. The player you're speaking to is wearing %s and holding %s. %s %s %s %s",
+        return String.format("%s The adventurer before you is clad in %s, wielding %s in their grasp. %s %s %s %s",
                 npcPrompt, playerArmor, playerHandItem, playerHealthContext, playerHungerContext, playerExperience, mmocoreContext);
     }
 
@@ -35,13 +35,13 @@ public class PlayerContextProvider {
             int mobsKilled = player.getStatistic(Statistic.MOB_KILLS);
 
             if (!player.hasPlayedBefore()) {
-                return "It is their first time playing on the server!";
-            } else if (hoursPlayed < 8 || mobsKilled < 20 ) {
-                return "They seem like a newbie to the server!";
-            } else if (hoursPlayed < 50 || mobsKilled > 50 ) {
-                return "They seem like an experienced player.";
+                return "A fresh face in our lands, embarking on their very first journey!";
+            } else if (hoursPlayed < 8 || mobsKilled < 20) {
+                return "A new adventurer, still finding their footing in our world.";
+            } else if (hoursPlayed < 50 || mobsKilled > 50) {
+                return "An experienced wanderer, familiar with the twists and turns of these lands.";
             } else {
-                return "They seem like a veteran of the server.";
+                return "A seasoned veteran, well-versed in the lore and challenges of our realm.";
             }
         } catch (IllegalArgumentException e) {
             Bukkit.getLogger().severe(e.toString());
@@ -54,9 +54,9 @@ public class PlayerContextProvider {
         double maxHealth = player.getMaxHealth();
 
         if (health <= maxHealth * 0.25) {
-            return "The player appears severely injured.";
+            return "Bearing scars of fierce battles, they stand, weathered and weary.";
         } else if (health <= maxHealth * 0.5) {
-            return "The player has visible injuries.";
+            return "With wounds still fresh, they carry the marks of recent strife.";
         }
         return "";
     }
@@ -65,9 +65,9 @@ public class PlayerContextProvider {
         int hunger = player.getFoodLevel();
 
         if (hunger <= 6) {
-            return "The player looks extremely hungry and malnourished.";
+            return "Their gaunt appearance speaks of a dire need for sustenance.";
         } else if (hunger <= 12) {
-            return "The player seems hungry.";
+            return "A hint of hunger lingers in their eyes, a subtle reminder of their mortal needs.";
         }
         return "";
     }
@@ -77,14 +77,26 @@ public class PlayerContextProvider {
         StringBuilder armorDesc = new StringBuilder();
         for (ItemStack item : armor) {
             if (item != null && item.getType() != Material.AIR) {
-                armorDesc.append(item.getType().name());
+                String itemName = item.getType().name().replace("_", " ").toLowerCase();
+                int durability = item.getType().getMaxDurability() - (int) item.getDurability();
+                int maxDurability = item.getType().getMaxDurability();
+                double durabilityPercentage = durability / (double) maxDurability * 100;
+
                 if (item.hasItemMeta() && item.getItemMeta().hasEnchants()) {
-                    armorDesc.append("(Enchanted)");
+                    itemName += " (enchanted)";
+                }
+
+                if (durabilityPercentage > 80) {
+                    armorDesc.append("well-maintained ").append(itemName);
+                } else if (durabilityPercentage > 50) {
+                    armorDesc.append("moderately used ").append(itemName);
+                } else {
+                    armorDesc.append("worn-out ").append(itemName);
                 }
                 armorDesc.append(", ");
             }
         }
-        return armorDesc.length() > 2 ? armorDesc.substring(0, armorDesc.length() - 2) : "none";
+        return armorDesc.length() > 2 ? "armor crafted from " + armorDesc.substring(0, armorDesc.length() - 2) : "no protective gear";
     }
 
     public String getPlayerHeldItem() {
@@ -92,7 +104,7 @@ public class PlayerContextProvider {
         if (item.getType() != Material.AIR) {
             String itemName = item.getType().name();
             if (item.hasItemMeta() && item.getItemMeta().hasEnchants()) {
-                itemName += "(Enchanted)";
+                itemName += "(imbued with enchantments)";
             }
             return itemName;
         } else {
@@ -110,10 +122,10 @@ public class PlayerContextProvider {
         // Check for party status
         boolean isInParty = playerData.getParty() != null;
 
-        String partyStatus = isInParty ? "They are in a party." : "They are playing solo.";
-        String classStatus = playerClass != null ? "Their class is " + playerClass.getName() : "They have not selected a class yet.";
-        String levelStatus = "Their level is " + playerLevel + ".";
+        String partyStatus = isInParty ? "Joined by comrades in a party," : "Venturing alone, a solitary figure against the world,";
+        String classStatus = playerClass != null ? "a " + playerClass.getName() + " by trade," : "undecided in their path,";
+        String levelStatus = "at the level of " + playerLevel + ",";
 
-        return String.format("%s. %s. %s", partyStatus, classStatus, levelStatus);
+        return String.format("%s %s their journey has brought them to the level of %s", partyStatus, classStatus, levelStatus);
     }
 }

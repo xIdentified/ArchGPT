@@ -44,8 +44,15 @@ split_long_messages: false
 conversation_start_popup: "Right-click to talk"
 # Phrase to end conversations with, required.
 conversation_end_phrase: "cancel"
-# Number of days NPCs will remember past dialogue
-npc_memory_duration: 7
+# Time (in Minecraft days) NPCs will remember conversations. Format: 1d, 1w, 1m etc
+npc_memory_duration: 7d
+
+# Using google cloud to fetch relevant messages in conversation history
+# saves on token usage since we don't have to send all relevant chat
+# history to the API each time. I recommend using!
+google_cloud:
+  enabled: false
+  key_file: 'path/to/google-cloud-key.json'  # Path to the Google Cloud API key file
 
 storage:
   type: 'sqlite' # Options: sqlite, mysql

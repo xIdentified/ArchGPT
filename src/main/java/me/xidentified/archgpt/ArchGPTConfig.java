@@ -156,7 +156,7 @@ public class ArchGPTConfig {
                         "ChatGPT Engine: " + chatGptEngine + "\n" + YELLOW +
                         "Max API Calls Per Second: " + maxApiCallsPerSecond + "\n" + YELLOW +
                         "Base Prompt: " + defaultPrompt + "\n" + YELLOW +
-                        "NPC Memory Duration: " + npcMemoryDuration + "\n" + YELLOW +
+                        "NPC Memory Duration: " + plugin.getConfig().getString("npc_memory_duration") + "\n" + YELLOW +
                         "Conversation Timeout: " + npcChatTimeoutMillis + "\n" + YELLOW +
                         "Split Long Chats: " + shouldSplitLongMsg + "\n";
 
