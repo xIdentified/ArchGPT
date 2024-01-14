@@ -9,9 +9,8 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class EnvironmentalContextProvider {
@@ -76,17 +75,19 @@ public class EnvironmentalContextProvider {
     public String getTimeOfDay() {
         long time = player.getWorld().getTime();
 
-        // Minecraft day starts at 0 (sunrise) and ends at 23999
-        return time < 2300 ? "early morning" : // 0 - 2299
-                time < 4500 ? "mid morning" :   // 2300 - 4499
-                        time < 6000 ? "late morning" :  // 4500 - 5999
-                                time < 9000 ? "noon" :     // 6000 - 8999
-                                        time < 12000 ? "early afternoon" : // 9000 - 11999
-                                                time < 13500 ? "mid afternoon" :  // 12000 - 13499
-                                                        time < 18000 ? "late afternoon" : // 13500 - 17999
-                                                                time < 21000 ? "early evening" : // 18000 - 20999
-                                                                        time < 24000 ? "night" :  // 21000 - 23999
-                                                                                "unknown";  // Fallback for unexpected values
+        // Align with Minecraft's day/night cycle as per the wiki
+        return time < 1000 ? "early morning, just after sunrise" :
+                time < 3000 ? "late morning" :
+                        time < 6000 ? "midday, when the sun is at its peak" :
+                                time < 9000 ? "early afternoon" :
+                                        time < 12000 ? "mid afternoon" :
+                                                time < 13000 ? "late afternoon, as the sun begins to set" :
+                                                        time < 14000 ? "sunset" :
+                                                                time < 15000 ? "dusk, the sky turning dark" :
+                                                                        time < 18000 ? "early night, with the moon rising" :
+                                                                                time < 21000 ? "late night, under a high moon" :
+                                                                                        time < 24000 ? "deep night, just before dawn" :
+                                                                                                "unknown";  // Fallback for unexpected values
     }
 
     public boolean isSnowyBiome(Biome biome) {
@@ -187,47 +188,51 @@ public class EnvironmentalContextProvider {
     public String getNearbyEntitiesContext() {
         List<Entity> nearbyEntities = player.getNearbyEntities(10, 10, 10);
 
-        // Lists to hold different types of entities
-        List<Entity> hostileMobs = new ArrayList<>();
-        List<Entity> peacefulMobs = new ArrayList<>();
-        List<Entity> otherEntities = new ArrayList<>();
+        // Maps to hold counts of different types of entities
+        Map<String, Integer> hostileMobCounts = new HashMap<>();
+        Map<String, Integer> peacefulMobCounts = new HashMap<>();
 
         for (Entity entity : nearbyEntities) {
+            String entityName = entity.getType().name();
             if (entity instanceof Monster) {
-                hostileMobs.add(entity);
+                hostileMobCounts.put(entityName, hostileMobCounts.getOrDefault(entityName, 0) + 1);
             } else if (entity instanceof Animals || entity instanceof WaterMob || entity instanceof Golem) {
-                peacefulMobs.add(entity);
-            } else {
-                otherEntities.add(entity);
+                peacefulMobCounts.put(entityName, peacefulMobCounts.getOrDefault(entityName, 0) + 1);
             }
         }
 
-        StringBuilder context = new StringBuilder();
+        String context = describeEntityCounts(hostileMobCounts, "hostile") +
+                describeEntityCounts(peacefulMobCounts, "peaceful");
 
-        // Check for hostile mobs and add them to the context
-        if (!hostileMobs.isEmpty()) {
-            context.append("There are hostile mobs nearby, like ");
-            context.append(getEntityNames(hostileMobs));
-            context.append(". ");
-        }
-
-        // Check for peaceful mobs and add them to the context
-        if (!peacefulMobs.isEmpty()) {
-            context.append("There are peaceful creatures around, such as ");
-            context.append(getEntityNames(peacefulMobs));
-            context.append(". ");
-        }
-
-        return context.toString().trim();
+        return context.trim();
     }
 
-    // Helper method to get a comma-separated list of entity names
-    private String getEntityNames(List<Entity> entities) {
-        List<String> names = new ArrayList<>();
-        for (Entity entity : entities) {
-            names.add(entity.getType().toString().toLowerCase().replace("_", " "));
+    private String describeEntityCounts(Map<String, Integer> entityCounts, String entityType) {
+        StringBuilder description = new StringBuilder();
+        if (!entityCounts.isEmpty()) {
+            description.append("There are ").append(entityType).append(" creatures around, such as ");
+            for (Map.Entry<String, Integer> entry : entityCounts.entrySet()) {
+                String entityName = entry.getKey();
+                int count = entry.getValue();
+                description.append(describeQuantity(count)).append(" ").append(entityName).append(count > 1 ? "s" : "").append(", ");
+            }
+            // Remove the last comma and space
+            description.setLength(description.length() - 2);
+            description.append(". ");
         }
-        return String.join(", ", names);
+        return description.toString();
+    }
+
+    private String describeQuantity(int count) {
+        if (count == 1) {
+            return "a";
+        } else if (count > 1 && count <= 3) {
+            return "a few";
+        } else if (count > 3 && count <= 6) {
+            return "several";
+        } else {
+            return "a lot of";
+        }
     }
 
 }
