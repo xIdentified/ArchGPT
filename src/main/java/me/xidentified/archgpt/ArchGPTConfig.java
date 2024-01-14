@@ -58,7 +58,7 @@ public class ArchGPTConfig {
         npcMessageColor = config.getString("chat_colors.npc_message");
         playerMessageColor = config.getString("chat_colors.player_message");
         String durationString = config.getString("npc_memory_duration", "7d");
-        npcMemoryDuration = parseDuration(durationString);
+        npcMemoryDuration = parseMinecraftDuration(durationString);
         shouldSplitLongMsg = config.getBoolean("split_long_messages", false);
 
         // Set the logger level based on debugMode
@@ -104,7 +104,8 @@ public class ArchGPTConfig {
         return combinedPrompt;
     }
 
-    private Duration parseDuration(String durationString) {
+    // Get in game time from config string
+    private Duration parseMinecraftDuration(String durationString) {
         Pattern pattern = Pattern.compile("(?:(\\d+)w)?\\s*(?:(\\d+)d)?\\s*(?:(\\d+)h)?\\s*(?:(\\d+)m)?");
         Matcher matcher = pattern.matcher(durationString);
 
@@ -114,10 +115,11 @@ public class ArchGPTConfig {
             long hours = matcher.group(3) != null ? Long.parseLong(matcher.group(3)) : 0;
             long minutes = matcher.group(4) != null ? Long.parseLong(matcher.group(4)) : 0;
 
+            // Convert Minecraft days to real-time minutes
             return Duration.ofMinutes(minutes)
                     .plusHours(hours)
-                    .plusDays(days)
-                    .plusDays(weeks * 7);
+                    .plusMinutes(days * 20)
+                    .plusMinutes(weeks * 7 * 20);
         }
         throw new IllegalArgumentException("Invalid duration format: " + durationString);
     }

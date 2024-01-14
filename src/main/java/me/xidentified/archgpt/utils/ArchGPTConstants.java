@@ -1,4 +1,4 @@
-package me.xidentified.archgpt;
+package me.xidentified.archgpt.utils;
 
 public class ArchGPTConstants {
 
@@ -16,4 +16,5 @@ public class ArchGPTConstants {
 
     public static final long CHAT_COOLDOWN_MS = 3000;
 
+    public static final int MINIMUM_SAVED_SENTENCE_LENGTH = 30;
 }

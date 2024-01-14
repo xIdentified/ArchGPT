@@ -3,6 +3,7 @@ package me.xidentified.archgpt;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import me.xidentified.archgpt.utils.ArchGPTConstants;
 import me.xidentified.archgpt.utils.LocaleUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;

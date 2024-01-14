@@ -1,6 +1,7 @@
 package me.xidentified.archgpt.listeners;
 
 import me.xidentified.archgpt.*;
+import me.xidentified.archgpt.utils.ArchGPTConstants;
 import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRightClickEvent;

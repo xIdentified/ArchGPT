@@ -1,6 +1,7 @@
 package me.xidentified.archgpt;
 
 import lombok.Getter;
+import me.xidentified.archgpt.utils.ArchGPTConstants;
 import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;

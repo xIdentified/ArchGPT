@@ -2,7 +2,6 @@ package me.xidentified.archgpt.utils;
 
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.ArchGPTConfig;
-import me.xidentified.archgpt.ArchGPTConstants;
 import me.xidentified.archgpt.NPCConversationManager;
 import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
@@ -20,6 +19,8 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -157,6 +158,19 @@ public class ConversationUtils {
                 Placeholder.unparsed("message", message),
                 Placeholder.parsed("message_color", configHandler.getNpcMessageColor())
         ));
+    }
+
+    public List<String> filterShortSentences(String message, int minLength) {
+        List<String> filteredSentences = new ArrayList<>();
+        String[] sentences = message.split("(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|!)\\s");
+
+        for (String sentence : sentences) {
+            if (sentence.length() >= minLength) {
+                filteredSentences.add(sentence.trim());
+            }
+        }
+
+        return filteredSentences;
     }
 
     // Update conversation token counter

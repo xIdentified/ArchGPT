@@ -3,6 +3,7 @@ package me.xidentified.archgpt;
 import com.google.gson.JsonArray;
 import lombok.Getter;
 import me.xidentified.archgpt.storage.model.Conversation;
+import me.xidentified.archgpt.utils.ArchGPTConstants;
 import me.xidentified.archgpt.utils.ConversationTimeoutManager;
 import me.xidentified.archgpt.utils.ConversationUtils;
 import me.xidentified.archgpt.utils.Messages;
@@ -123,15 +124,21 @@ public class NPCConversationManager {
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 List<JsonObject> updatedConversationState = new ArrayList<>();
                 for (Conversation pastConversation : pastConversations) {
-                    JsonObject pastMessageJson = new JsonObject();
-                    String role = pastConversation.isFromNPC() ? "assistant" : "user";
                     String timeContext = getTimeContext(pastConversation.getTimestamp());
-                    String contextualMessage = timeContext + ", you spoke about: " + pastConversation.getMessage();
-                    pastMessageJson.addProperty("role", role);
-                    pastMessageJson.addProperty("content", contextualMessage);
-                    updatedConversationState.add(pastMessageJson);
-                    plugin.debugLog("Added previous message: " + contextualMessage);
+                    List<String> relevantSentences = conversationUtils.filterShortSentences(pastConversation.getMessage(), ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
+
+                    if (!relevantSentences.isEmpty()) {
+                        String filteredMessage = String.join(" ", relevantSentences);
+                        String contextualMessage = String.format("%s, you spoke about: %s", timeContext, filteredMessage);
+
+                        JsonObject pastMessageJson = new JsonObject();
+                        pastMessageJson.addProperty("role", pastConversation.isFromNPC() ? "assistant" : "user");
+                        pastMessageJson.addProperty("content", contextualMessage);
+                        updatedConversationState.add(pastMessageJson);
+                        plugin.debugLog("Added previous message: " + contextualMessage);
+                    }
                 }
+
                 List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
                 updatedConversationState.addAll(0, initialConversationState);
                 npcChatStatesCache.put(playerUUID, updatedConversationState);
@@ -281,20 +288,28 @@ public class NPCConversationManager {
                                 public void run() {
                                     if (plugin.getActiveConversations().containsKey(playerUUID)) {
                                         conversationUtils.sendNPCMessage(player, npcName, response);
-                                        npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
-                                        // Assuming the message is from the NPC
-                                        Conversation conversation = new Conversation(
-                                                player.getUniqueId(),
-                                                npc.getName(),
-                                                PlainTextComponentSerializer.plainText().serialize(response),
-                                                System.currentTimeMillis(),
-                                                true  // Set to true, this message is from the NPC
-                                        );
-                                        plugin.getConversationDAO().saveConversation(conversation);
+
+                                        // Save the conversation if the response is longer than a minimum length
+                                        String responseText = PlainTextComponentSerializer.plainText().serialize(response);
+                                        List<String> relevantSentences = conversationUtils.filterShortSentences(responseText, ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
+
+                                        if (!relevantSentences.isEmpty()) {
+                                            String filteredResponseText = String.join(" ", relevantSentences);
+                                            Conversation conversation = new Conversation(
+                                                    player.getUniqueId(),
+                                                    npc.getName(),
+                                                    filteredResponseText,
+                                                    System.currentTimeMillis(),
+                                                    true
+                                            );
+                                            plugin.getConversationDAO().saveConversation(conversation);
+                                        }
+
+                                        hologramManager.removePlayerHologram(playerUUID);
                                     }
-                                    hologramManager.removePlayerHologram(playerUUID);
                                 }
                             }.runTaskLater(plugin, 20L);
+
                             conversationUtils.updateConversationTokenCounter(playerUUID);
                             getConversationTimeoutManager().resetConversationTimeout(playerUUID);
                         }
