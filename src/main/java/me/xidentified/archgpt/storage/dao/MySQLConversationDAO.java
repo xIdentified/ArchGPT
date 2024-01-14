@@ -39,6 +39,7 @@ public class MySQLConversationDAO implements ConversationDAO {
                              "npc_name VARCHAR(255), " +
                              "message TEXT, " +
                              "timestamp BIGINT, " +
+                             "is_from_npc BOOLEAN, " +
                              "PRIMARY KEY (player_uuid, timestamp))")) {
             stmt.executeUpdate();
         } catch (SQLException e) {

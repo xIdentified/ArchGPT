@@ -36,6 +36,7 @@ public class SQLiteConversationDAO implements ConversationDAO {
                              "player_uuid TEXT, " +
                              "npc_name TEXT, " +
                              "message TEXT, " +
+                             "is_from_npc BOOLEAN, " +
                              "timestamp INTEGER)")) {
             stmt.executeUpdate();
         } catch (SQLException e) {

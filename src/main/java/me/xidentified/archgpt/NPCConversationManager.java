@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -124,12 +125,13 @@ public class NPCConversationManager {
                 for (Conversation pastConversation : pastConversations) {
                     JsonObject pastMessageJson = new JsonObject();
                     String role = pastConversation.isFromNPC() ? "assistant" : "user";
+                    String timeContext = getTimeContext(pastConversation.getTimestamp());
+                    String contextualMessage = timeContext + ", you spoke about: " + pastConversation.getMessage();
                     pastMessageJson.addProperty("role", role);
-                    pastMessageJson.addProperty("content", pastConversation.getMessage());
+                    pastMessageJson.addProperty("content", contextualMessage);
                     updatedConversationState.add(pastMessageJson);
-                    plugin.debugLog("Added previous message: " + pastConversation.getMessage());
+                    plugin.debugLog("Added previous message: " + contextualMessage);
                 }
-                // Add the initial conversation state, if any, at the beginning of the list
                 List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
                 updatedConversationState.addAll(0, initialConversationState);
                 npcChatStatesCache.put(playerUUID, updatedConversationState);
@@ -137,6 +139,21 @@ public class NPCConversationManager {
         });
     }
 
+    private String getTimeContext(long pastTimestamp) {
+        long currentTimestamp = Instant.now().toEpochMilli();
+        long timeDifferenceMillis = currentTimestamp - pastTimestamp;
+        long timeDifferenceInMinecraftDays = timeDifferenceMillis / (1200 * 1000);  // Convert milliseconds to Minecraft days
+
+        if (timeDifferenceInMinecraftDays < 1) {
+            return "Earlier today";
+        } else if (timeDifferenceInMinecraftDays < 7) {
+            return "A few days ago";
+        } else if (timeDifferenceInMinecraftDays < 30) {
+            return "Earlier this month";
+        } else {
+            return "Some time ago";
+        }
+    }
 
     public void endConversation(UUID playerUUID) {
         plugin.debugLog("Conversation ended for player " + playerUUID);
@@ -174,6 +191,16 @@ public class NPCConversationManager {
 
         // Send player message
         conversationUtils.sendPlayerMessage(player, playerMessage);
+
+        // Save the player's message
+        Conversation playerConversation = new Conversation(
+                playerUUID,
+                playerNPCMap.containsKey(playerUUID) ? playerNPCMap.get(playerUUID).getName() : "Unknown NPC",
+                PlainTextComponentSerializer.plainText().serialize(playerMessage),
+                System.currentTimeMillis(),
+                false  // This message is from the player
+        );
+        plugin.getConversationDAO().saveConversation(playerConversation);
 
         // Start animation over NPC head while it processes response
         new BukkitRunnable() {
@@ -255,7 +282,14 @@ public class NPCConversationManager {
                                     if (plugin.getActiveConversations().containsKey(playerUUID)) {
                                         conversationUtils.sendNPCMessage(player, npcName, response);
                                         npc.data().set("last_message", PlainTextComponentSerializer.plainText().serialize(response));
-                                        Conversation conversation = new Conversation(player.getUniqueId(), npc.getName(), PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
+                                        // Assuming the message is from the NPC
+                                        Conversation conversation = new Conversation(
+                                                player.getUniqueId(),
+                                                npc.getName(),
+                                                PlainTextComponentSerializer.plainText().serialize(response),
+                                                System.currentTimeMillis(),
+                                                true  // Set to true, this message is from the NPC
+                                        );
                                         plugin.getConversationDAO().saveConversation(conversation);
                                     }
                                     hologramManager.removePlayerHologram(playerUUID);

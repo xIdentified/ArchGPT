@@ -6,7 +6,6 @@ import me.xidentified.archgpt.ArchGPTConstants;
 import me.xidentified.archgpt.NPCConversationManager;
 import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
-import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
@@ -146,14 +145,6 @@ public class ConversationUtils {
         } else {
             // Send the entire response as a single message
             sendMessageFormatted(player, responseText, npcName);
-        }
-
-        // Save NPC's message if in conversation
-        if (plugin.getManager().playerInConversation(player.getUniqueId())) {
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-                Conversation conversation = new Conversation(player.getUniqueId(), npcName, responseText, System.currentTimeMillis());
-                plugin.getConversationDAO().saveConversation(conversation);
-            });
         }
     }
 
