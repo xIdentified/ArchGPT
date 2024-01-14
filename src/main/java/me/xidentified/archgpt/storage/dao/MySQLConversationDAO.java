@@ -80,4 +80,17 @@ public class MySQLConversationDAO implements ConversationDAO {
         return conversations;
     }
 
+    @Override
+    public void clearAllConversations() {
+        try (Connection conn = DriverManager.getConnection(url, username, password);
+             Statement stmt = conn.createStatement()) {
+            // Delete all records from the 'conversations' table
+            String sql = "DELETE FROM conversations";
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            // Handle exceptions
+            throw new RuntimeException("Error clearing conversations: " + e.getMessage(), e);
+        }
+    }
+
 }

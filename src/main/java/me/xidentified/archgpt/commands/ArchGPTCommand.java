@@ -31,11 +31,18 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
                 // TODO: Unregister and register listeners
                 plugin.sendMessage(sender, Messages.RELOAD_SUCCESS);
                 return true;
+            } else if (args[0].equalsIgnoreCase("clear-all-conversations")) {
+                if (!sender.hasPermission("archgpt.admin")) {
+                    plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
+                    return true;
+                }
+                clearConversationStorage(sender);
+                return true;
             }
+            plugin.sendMessage(sender, Messages.GENERAL_CMD_USAGE);
+            return true;
         }
-
-        plugin.sendMessage(sender, Messages.RELOAD_CMD_USAGE);
-        return true;
+        return false;
     }
 
     @Override
@@ -44,8 +51,22 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
 
         if (command.getName().equalsIgnoreCase("archgpt") && args.length == 1) {
             completions.add("reload");
+            if (sender.hasPermission("archgpt.admin")) {
+                completions.add("clear-all-conversations");
+            }
         }
 
         return completions;
+    }
+
+    private void clearConversationStorage(CommandSender sender) {
+        // Implement logic to clear conversation storage
+        try {
+            plugin.getConversationDAO().clearAllConversations();
+            plugin.sendMessage(sender, Messages.CLEAR_STORAGE_SUCCESS);
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error clearing conversation storage: " + e.getMessage());
+            plugin.sendMessage(sender, Messages.CLEAR_STORAGE_ERROR);
+        }
     }
 }

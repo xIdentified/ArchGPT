@@ -11,13 +11,12 @@ import java.util.UUID;
 public class SQLiteConversationDAO implements ConversationDAO {
     private final String url;
 
-    public SQLiteConversationDAO(File sqliteFile) {
-        // Ensure the directory for the SQLite file exists
-        if (!sqliteFile.getParentFile().exists()) {
-            sqliteFile.getParentFile().mkdirs();
+    public SQLiteConversationDAO(File dataFolder) {
+        File storageFolder = new File(dataFolder, "storage");
+        if (!storageFolder.exists()) {
+            storageFolder.mkdirs();
         }
-
-        // Construct the JDBC URL using the file path
+        File sqliteFile = new File(storageFolder, "conversations.db");
         this.url = "jdbc:sqlite:" + sqliteFile.getAbsolutePath();
         initializeDatabase();
         addIndices();
@@ -82,4 +81,15 @@ public class SQLiteConversationDAO implements ConversationDAO {
         }
         return conversations;
     }
+
+    @Override
+    public void clearAllConversations() {
+        try (Connection conn = DriverManager.getConnection(url);
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("DELETE FROM conversations");
+        } catch (SQLException e) {
+            throw new RuntimeException("Error clearing conversations: " + e.getMessage(), e);
+        }
+    }
+
 }

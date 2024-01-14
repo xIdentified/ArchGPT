@@ -7,4 +7,6 @@ import java.util.UUID;
 public interface ConversationDAO {
     void saveConversation(Conversation conversation);
     List<Conversation> getConversations(UUID playerUUID, String npcName);
+
+    void clearAllConversations();
 }

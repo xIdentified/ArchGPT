@@ -2,6 +2,7 @@ package me.xidentified.archgpt.utils;
 
 import de.cubbossa.translations.Message;
 import de.cubbossa.translations.MessageBuilder;
+import net.kyori.adventure.text.ComponentLike;
 
 public class Messages {
 
@@ -72,11 +73,17 @@ public class Messages {
             .withDefault("<positive>Report successfully deleted.")
             .build();
 
-    // Reload
-    public static final Message RELOAD_SUCCESS = new MessageBuilder("reload.success")
+    // Admin
+    public static final Message GENERAL_CMD_USAGE = new MessageBuilder("archgpt.usage")
+            .withDefault("<positive>Usage: /archgpt <reload/clear-all-conversations>")
+            .build();
+    public static final Message RELOAD_SUCCESS = new MessageBuilder("archgpt.reload")
             .withDefault("<positive>ArchGPT successfully reloaded!")
             .build();
-    public static final Message RELOAD_CMD_USAGE = new MessageBuilder("reload.usage")
-            .withDefault("<positive>Usage: /archgpt reload")
+    public static final Message CLEAR_STORAGE_SUCCESS = new MessageBuilder("archgpt.clearconversations.success")
+            .withDefault("<positive>All conversation history successfully deleted.")
+            .build();
+    public static final Message CLEAR_STORAGE_ERROR = new MessageBuilder("archgpt.clearconversations.error")
+            .withDefault("<negative>There was an error clearing conversation history.")
             .build();
 }
