@@ -67,7 +67,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
                 handleBroadcastCommand(sender, args);
                 break;
 
-            case "resetnpcmemory":
+            case "reset-npc-memory":
                 handleResetNpcMemoryCommand(sender, args);
                 break;
 
@@ -119,7 +119,8 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
         plugin.getConversationDAO().clearConversationsForNpc(npcName);
         plugin.sendMessage(sender, Messages.NPC_MEMORY_RESET.formatted(
                 Placeholder.unparsed("name", npcName)
-        ));    }
+        ));
+    }
 
     private void toggleDebugMode(CommandSender sender) {
         plugin.getConfigHandler().toggleDebugMode();

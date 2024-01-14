@@ -1,8 +1,6 @@
 package me.xidentified.archgpt;
 
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.xidentified.archgpt.utils.LocaleUtils;
@@ -37,7 +35,7 @@ public class ChatRequestHandler {
         CONVERSATION
     }
 
-    public CompletableFuture<Object> processChatGPTRequest(Player player, JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<Component> conversationState) {
+    public CompletableFuture<Object> processChatGPTRequest(Player player, JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<JsonObject> conversationState) {
         UUID playerUUID = player.getUniqueId();
         plugin.playerSemaphores.putIfAbsent(playerUUID, new Semaphore(1));
 
@@ -110,15 +108,21 @@ public class ChatRequestHandler {
                 return responseComponent;
             } else {
                 // Additional processing for non-greeting requests
-                Gson gson = new GsonBuilder().create();
-                String sanitizedPlayerMessage = gson.toJson(PlainTextComponentSerializer.plainText().serialize(playerMessageComponent));
+                String sanitizedPlayerMessage = PlainTextComponentSerializer.plainText().serialize(playerMessageComponent);
 
                 if (conversationState.size() > ArchGPTConstants.MAX_CONVERSATION_STATE_SIZE * 2) {
                     conversationState.subList(0, 2).clear();
                 }
 
-                conversationState.add(Component.text("user: " + sanitizedPlayerMessage));
-                conversationState.add(Component.text("assistant: ").append(responseComponent));
+                JsonObject userMessageJson = new JsonObject();
+                userMessageJson.addProperty("role", "user");
+                userMessageJson.addProperty("content", sanitizedPlayerMessage);
+                conversationState.add(userMessageJson);
+
+                JsonObject assistantMessageJson = new JsonObject();
+                assistantMessageJson.addProperty("role", "assistant");
+                assistantMessageJson.addProperty("content", PlainTextComponentSerializer.plainText().serialize(responseComponent));
+                conversationState.add(assistantMessageJson);
 
                 return Pair.of(responseComponent, conversationState);
             }

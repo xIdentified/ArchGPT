@@ -8,7 +8,6 @@ import me.xidentified.archgpt.utils.ConversationUtils;
 import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import com.google.gson.JsonObject;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -30,9 +29,8 @@ public class NPCConversationManager {
     @Getter private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
     public final Map<UUID, Long> npcCommentCooldown = new ConcurrentHashMap<>(); //Stores cooldown for NPC greeting to passing player
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
-    public final ConcurrentHashMap<UUID, List<Component>> npcChatStatesCache;
+    public final ConcurrentHashMap<UUID, List<JsonObject>> npcChatStatesCache;
     private final ConcurrentHashMap<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
-    private static final JsonObject SYSTEM_MESSAGE = createStaticSystemMessage();
 
     public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -44,10 +42,19 @@ public class NPCConversationManager {
         this.conversationUtils = new ConversationUtils(plugin, configHandler, this);
     }
 
-    private static JsonObject createStaticSystemMessage() {
+    public JsonObject createSystemMessage(NPC npc, Player player) {
         JsonObject systemMessage = new JsonObject();
         systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", "You are an intelligent NPC capable of conversational interaction.");
+
+        // Use conversationUtils instance field
+        String combinedContext = this.conversationUtils.getCombinedContext(npc.getName(), player);
+
+        // Construct the system message content
+        String systemMessageContent = "Your name is " + npc.getName() + ". You are an intelligent NPC in a Minecraft Java server " +
+                "capable of conversational interaction. Do not make any reference to being an AI, it ruins immersion. " +
+                "Always respond as your living character, utilizing the following context: " + combinedContext;
+        systemMessage.addProperty("content", systemMessageContent);
+
         return systemMessage;
     }
 
@@ -62,11 +69,12 @@ public class NPCConversationManager {
         JsonArray messages = new JsonArray();
 
         // Add system prompt message
-        messages.add(SYSTEM_MESSAGE);
+        JsonObject systemMessage = createSystemMessage(npc, player);
+        messages.add(systemMessage);
 
         // Get combined context for the NPC with the specific greeting
         String combinedContext = conversationUtils.getCombinedContext(npc.getName(), player);
-        String greetingContext = combinedContext + " The player, " + player.getName() + ", approaches you. How do you greet them?";
+        String greetingContext = combinedContext + " A player known as " + player.getName() + " approaches you. How do you greet them?";
 
         // Add user prompt message with combined context
         JsonObject userMessage = new JsonObject();
@@ -84,16 +92,15 @@ public class NPCConversationManager {
         UUID playerUUID = player.getUniqueId();
         String npcName = npc.getName();
 
-        // Get combined context for the NPC
-        String combinedContext = conversationUtils.getCombinedContext(npcName, player);
-
-        // Prepare initial conversation state
-        Component npcIntroComponent = Component.text(combinedContext);
-        List<Component> initialConversationState = new ArrayList<>();
-        initialConversationState.add(npcIntroComponent);
-
         // Store conversation state
         playerNPCMap.put(playerUUID, npc);
+        List<JsonObject> initialConversationState = new ArrayList<>();
+
+        // Add the system message with NPC's context
+        JsonObject systemMessageJson = createSystemMessage(npc, player);
+        initialConversationState.add(systemMessageJson);  // This is now a JsonObject directly
+
+        // Store the initial conversation state as JsonObjects
         npcChatStatesCache.put(playerUUID, initialConversationState);
         plugin.getActiveConversations().put(playerUUID, true);
 
@@ -105,12 +112,13 @@ public class NPCConversationManager {
         // Fetch past conversations asynchronously and update the conversation state
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
-            // Ensure this runs on the main thread
             plugin.getServer().getScheduler().runTask(plugin, () -> {
-                List<Component> updatedConversationState = new ArrayList<>(initialConversationState);
+                List<JsonObject> updatedConversationState = new ArrayList<>(initialConversationState);
                 for (Conversation pastConversation : pastConversations) {
-                    Component pastMessage = Component.text(pastConversation.getMessage());
-                    updatedConversationState.add(pastMessage);
+                    JsonObject pastMessageJson = new JsonObject();
+                    pastMessageJson.addProperty("role", "user"); // or "assistant" based on who said it
+                    pastMessageJson.addProperty("content", pastConversation.getMessage());
+                    updatedConversationState.add(pastMessageJson);
                     plugin.debugLog("Added previous message: " + pastConversation.getMessage());
                 }
                 npcChatStatesCache.put(playerUUID, updatedConversationState);
@@ -186,26 +194,20 @@ public class NPCConversationManager {
         playerCooldowns.put(playerUUID, currentTimeMillis);
 
         // Process chat request
-        List<Component> conversationState = npcChatStatesCache.get(playerUUID);
+        List<JsonObject> conversationState = npcChatStatesCache.get(playerUUID);
 
         // Prepare the request payload as a JsonObject
         JsonObject jsonRequest = new JsonObject();
         JsonArray messages = new JsonArray();
 
         // Add previous conversation messages to 'messages'
-        for (Component messageComponent : conversationState) {
-            JsonObject messageJson = new JsonObject();
-            String role = (messageComponent.style().color() == NamedTextColor.WHITE) ? "assistant" : "user";
-            String content = PlainTextComponentSerializer.plainText().serialize(messageComponent);
-            messageJson.addProperty("role", role);
-            messageJson.addProperty("content", content);
+        for (JsonObject messageJson : conversationState) {
             messages.add(messageJson);
         }
 
-        // Add the player's current message, with parsed placeholders
+        // Add the player's current message as a new JsonObject
         JsonObject userMessageJson = new JsonObject();
         String sanitizedPlayerMessage = PlainTextComponentSerializer.plainText().serialize(playerMessage);
-
         userMessageJson.addProperty("role", "user");
         userMessageJson.addProperty("content", sanitizedPlayerMessage);
         messages.add(userMessageJson);
@@ -226,11 +228,11 @@ public class NPCConversationManager {
                     Object leftObject = rawPair.getLeft();
                     Object rightObject = rawPair.getRight();
 
-                    if (leftObject instanceof Component response && rightObject instanceof List<?> rawList) {
-                        // Check if the list contains Components
-                        if (rawList.stream().allMatch(item -> item instanceof Component)) {
+                    if (leftObject instanceof Component response && rightObject instanceof List<?>) {
+                        // Check if the list contains JsonObjects
+                        if (((List<?>) rawPair.getRight()).stream().allMatch(item -> item instanceof JsonObject)) {
                             @SuppressWarnings("unchecked") // Safe after checking all elements
-                            List<Component> updatedConversationState = (List<Component>) rawList;
+                            List<JsonObject> updatedConversationState = (List<JsonObject>) rawPair.getRight();
 
                             if (!conversationState.equals(updatedConversationState)) {
                                 npcChatStatesCache.put(playerUUID, updatedConversationState);

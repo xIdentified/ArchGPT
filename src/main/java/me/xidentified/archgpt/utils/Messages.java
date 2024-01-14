@@ -111,7 +111,7 @@ public class Messages {
             .withDefault("<negative>NPC '<name>' not found.")
             .withPlaceholder("name")
             .build();
-    public static final Message NPC_MEMORY_RESET = new MessageBuilder("npc.not-found")
+    public static final Message NPC_MEMORY_RESET = new MessageBuilder("npc.memory-reset")
             .withDefault("<positive>Memory for NPC '<name>' has been reset.")
             .withPlaceholder("name")
             .build();

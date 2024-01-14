@@ -36,7 +36,7 @@ public class EnvironmentalContextProvider {
 
         return String.format("%s. The current time is %s and the weather is %s. " +
                         "The biome (environment) you are in is %s. %s " +
-                        "Your current location is %s. %s",
+                        "Your current location is %s %s",
                 npcPrompt, timeOfDay, weather, biome,
                 entityContext, npcLocationContext, poiContext);
     }
@@ -60,7 +60,7 @@ public class EnvironmentalContextProvider {
     }
 
     public String getPointsOfInterestContext() {
-        StringBuilder poiContext = new StringBuilder();
+        StringBuilder poiContext = new StringBuilder("There are several important landmarks in the server: ");
         ConcurrentHashMap<String, String> worldPOIs = pointsOfInterest.get(player.getWorld().getName());
 
         if (worldPOIs != null) {

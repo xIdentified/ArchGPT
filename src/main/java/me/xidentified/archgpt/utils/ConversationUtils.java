@@ -130,11 +130,6 @@ public class ConversationUtils {
                 Placeholder.unparsed("message", messageText),
                 Placeholder.parsed("message_color", configHandler.getPlayerMessageColor())
                 ));
-
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            Conversation conversation = new Conversation(player.getUniqueId(), "NPC_NAME", PlainTextComponentSerializer.plainText().serialize(playerMessage), System.currentTimeMillis());
-            plugin.getConversationDAO().saveConversation(conversation);
-        });
     }
 
     public void sendNPCMessage(Player player, String npcName, Component response) {
@@ -142,7 +137,7 @@ public class ConversationUtils {
         String responseText = PlainTextComponentSerializer.plainText().serialize(response);
 
         if (splitLongMessages) {
-            // Split the response into parts after every two sentences and send each part as a separate message
+            // Split the response into parts after every few sentences and send each part as a separate message
             String[] sentences = responseText.split("(?<=[.!?])\\s+");
             for (int i = 0; i < sentences.length; i += 2) {
                 String partText = StringUtils.join(sentences, ' ', i, Math.min(i + 2, sentences.length));
@@ -153,11 +148,13 @@ public class ConversationUtils {
             sendMessageFormatted(player, responseText, npcName);
         }
 
-        // Save NPC's message
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            Conversation conversation = new Conversation(player.getUniqueId(), npcName, responseText, System.currentTimeMillis());
-            plugin.getConversationDAO().saveConversation(conversation);
-        });
+        // Save NPC's message if in conversation
+        if (plugin.getManager().playerInConversation(player.getUniqueId())) {
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+                Conversation conversation = new Conversation(player.getUniqueId(), npcName, responseText, System.currentTimeMillis());
+                plugin.getConversationDAO().saveConversation(conversation);
+            });
+        }
     }
 
     private void sendMessageFormatted(Player player, String message, String npcName) {
