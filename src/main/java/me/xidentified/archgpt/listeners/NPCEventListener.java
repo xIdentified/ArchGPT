@@ -171,8 +171,8 @@ public class NPCEventListener implements Listener {
         } else {
             // Check if player strayed too far from the NPC
             if (npc.isSpawned()) {
-                double distance = to.distanceSquared(npc.getEntity().getLocation());
-                if (distance > 14) {
+                double distance = to.distance(npc.getEntity().getLocation());
+                if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
                     conversationManager.endConversation(playerUUID);
                     plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
                 }

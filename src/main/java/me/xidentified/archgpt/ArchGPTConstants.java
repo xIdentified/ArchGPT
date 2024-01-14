@@ -6,7 +6,7 @@ public class ArchGPTConstants {
 
     public static final long MAX_HOLOGRAM_LIFETIME = 1200L;  // 60 seconds in ticks
 
-    public static final double MAX_DISTANCE_FROM_NPC = 13.0;
+    public static final double MAX_DISTANCE_FROM_NPC = 14.0;
 
     public static final double MAX_DISTANCE_LINE_OF_SIGHT = 4.0;
 

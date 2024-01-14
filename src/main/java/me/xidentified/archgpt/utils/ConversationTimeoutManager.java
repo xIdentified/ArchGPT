@@ -1,7 +1,6 @@
 package me.xidentified.archgpt.utils;
 
 import me.xidentified.archgpt.ArchGPT;
-import me.xidentified.archgpt.utils.Messages;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;

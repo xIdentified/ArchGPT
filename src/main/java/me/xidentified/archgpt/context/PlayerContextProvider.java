@@ -1,9 +1,7 @@
 package me.xidentified.archgpt.context;
 
-import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import net.Indyuce.mmocore.api.player.PlayerData;
 import net.Indyuce.mmocore.api.player.profess.PlayerClass;
-import net.Indyuce.mmocore.manager.data.PlayerDataManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Statistic;

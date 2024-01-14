@@ -2,7 +2,6 @@ package me.xidentified.archgpt.utils;
 
 import de.cubbossa.translations.Message;
 import de.cubbossa.translations.MessageBuilder;
-import net.kyori.adventure.text.ComponentLike;
 
 public class Messages {
 
@@ -74,8 +73,8 @@ public class Messages {
             .build();
 
     // Admin
-    public static final Message GENERAL_CMD_USAGE = new MessageBuilder("archgpt.usage")
-            .withDefault("<positive>Usage: /archgpt <reload/clear-all-conversations>")
+    public static final Message CMD_USAGE = new MessageBuilder("archgpt.usage")
+            .withDefault("<positive>Usage: /archgpt <argument>")
             .build();
     public static final Message RELOAD_SUCCESS = new MessageBuilder("archgpt.reload")
             .withDefault("<positive>ArchGPT successfully reloaded!")
@@ -85,5 +84,19 @@ public class Messages {
             .build();
     public static final Message CLEAR_STORAGE_ERROR = new MessageBuilder("archgpt.clearconversations.error")
             .withDefault("<negative>There was an error clearing conversation history.")
+            .build();
+    public static final Message VERSION_INFO = new MessageBuilder("archgpt.version")
+            .withDefault("<yellow>Server version: <gray><server-ver>\n<yellow>ArchGPT version: <gray><plugin-ver>\n<yellow>Java version: <gray><java-ver>")
+            .withPlaceholder("server-ver")
+            .withPlaceholder("plugin-ver")
+            .withPlaceholder("java-ver")
+            .build();
+    public static final Message NPC_NOT_FOUND = new MessageBuilder("archgpt.npc-not-found")
+            .withDefault("<negative>NPC <name> not found.")
+            .withPlaceholder("name")
+            .build();
+    public static final Message NPC_PROMPT_UPDATED = new MessageBuilder("archgpt.npc-prompt-updated")
+            .withDefault("<positive>Prompt for <name> updated successfully.")
+            .withPlaceholder("name")
             .build();
 }

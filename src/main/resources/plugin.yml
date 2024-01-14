@@ -18,7 +18,7 @@ libraries:
 commands:
   archgpt:
     description: Main command for the plugin
-    usage: /<command> [reload|clear-all-conversations]
+    usage: /<command> [version|reload|clear-all-conversations]
     permission: archgpt.admin
   npcreports:
     description: Manage and view NPC message reports.
