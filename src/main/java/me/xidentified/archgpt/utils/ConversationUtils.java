@@ -10,12 +10,9 @@ import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.apache.commons.lang3.StringUtils;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -142,52 +139,36 @@ public class ConversationUtils {
 
     public void sendNPCMessage(Player player, String npcName, Component response) {
         boolean splitLongMessages = configHandler.isShouldSplitLongMsg();
+        String responseText = PlainTextComponentSerializer.plainText().serialize(response);
 
         if (splitLongMessages) {
-            // Split the response into parts and send each part as a separate message
-            response.children().forEach(part -> {
-                String partText = PlainTextComponentSerializer.plainText().serialize(part);
+            // Split the response into parts after every two sentences and send each part as a separate message
+            String[] sentences = responseText.split("(?<=[.!?])\\s+");
+            for (int i = 0; i < sentences.length; i += 2) {
+                String partText = StringUtils.join(sentences, ' ', i, Math.min(i + 2, sentences.length));
                 sendMessageFormatted(player, partText, npcName);
-            });
+            }
         } else {
             // Send the entire response as a single message
-            String responseText = PlainTextComponentSerializer.plainText().serialize(response);
             sendMessageFormatted(player, responseText, npcName);
         }
 
         // Save NPC's message
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            Conversation conversation = new Conversation(player.getUniqueId(), npcName, PlainTextComponentSerializer.plainText().serialize(response), System.currentTimeMillis());
+            Conversation conversation = new Conversation(player.getUniqueId(), npcName, responseText, System.currentTimeMillis());
             plugin.getConversationDAO().saveConversation(conversation);
         });
     }
 
     private void sendMessageFormatted(Player player, String message, String npcName) {
         // Prepare and send formatted NPC message
-        plugin.sendMessage(player,Messages.GENERAL_NPC_MESSAGE.formatted(
+        plugin.debugLog("Formatted NPC message: " + message);
+        plugin.sendMessage(player, Messages.GENERAL_NPC_MESSAGE.formatted(
                 Placeholder.unparsed("npc_name", npcName),
                 Placeholder.parsed("npc_name_color", configHandler.getNpcNameColor()),
                 Placeholder.unparsed("message", message),
                 Placeholder.parsed("message_color", configHandler.getNpcMessageColor())
         ));
-    }
-
-    private void sendIndividualNPCMessage(Player player, UUID playerUUID, String npcName, TextColor npcNameColor, Component npcMessageComponent) {
-        Component npcNameComponent = Component.text(npcName + ": ")
-                .color(npcNameColor);
-        String uniqueMessageIdentifier = playerUUID.toString() + "_" + System.currentTimeMillis();
-
-        if (plugin.getActiveConversations().containsKey(playerUUID)) {
-            // Player is in a conversation, attach hover and click events
-            Component messageComponent = npcNameComponent.append(npcMessageComponent)
-                    .hoverEvent(HoverEvent.showText(Component.text("Click to report", NamedTextColor.RED)))
-                    .clickEvent(ClickEvent.runCommand("/reportnpcmessage " + uniqueMessageIdentifier));
-
-            player.sendMessage(messageComponent);
-        } else {
-            // Player is not in a conversation, send message without report option
-            player.sendMessage(npcNameComponent.append(npcMessageComponent));
-        }
     }
 
     // Update conversation token counter

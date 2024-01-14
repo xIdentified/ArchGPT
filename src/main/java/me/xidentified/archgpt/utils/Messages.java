@@ -76,14 +76,22 @@ public class Messages {
     public static final Message CMD_USAGE = new MessageBuilder("archgpt.usage")
             .withDefault("<positive>Usage: /archgpt <argument>")
             .build();
+    public static final Message BROADCAST_CMD_USAGE = new MessageBuilder("archgpt.usage")
+            .withDefault("<yellow>Usage: /archgpt broadcast <npcName> <message>")
+            .build();
+    public static final Message SETNPC_CMD_USAGE = new MessageBuilder("archgpt.setnpc-usage")
+            .withDefault("<yellow>Usage: /archgpt setnpc <npcname> <prompt>")
+            .build();
+    public static final Message RESETMEMORY_CMD_USAGE = new MessageBuilder("archgpt.resetnpc-usage")
+            .withDefault("<yellow>Usage: /archgpt resetnpcmemory <npcName>")
+            .build();
+
     public static final Message RELOAD_SUCCESS = new MessageBuilder("archgpt.reload")
             .withDefault("<positive>ArchGPT successfully reloaded!")
             .build();
-    public static final Message CLEAR_STORAGE_SUCCESS = new MessageBuilder("archgpt.clearconversations.success")
-            .withDefault("<positive>All conversation history successfully deleted.")
-            .build();
-    public static final Message CLEAR_STORAGE_ERROR = new MessageBuilder("archgpt.clearconversations.error")
-            .withDefault("<negative>There was an error clearing conversation history.")
+    public static final Message DEBUG_MODE = new MessageBuilder("archgpt.debugmode")
+            .withDefault("<yellow>Debug mode is now <toggle>")
+            .withPlaceholder("toggle")
             .build();
     public static final Message VERSION_INFO = new MessageBuilder("archgpt.version")
             .withDefault("<yellow>Server version: <gray><server-ver>\n<yellow>ArchGPT version: <gray><plugin-ver>\n<yellow>Java version: <gray><java-ver>")
@@ -91,11 +99,23 @@ public class Messages {
             .withPlaceholder("plugin-ver")
             .withPlaceholder("java-ver")
             .build();
-    public static final Message NPC_NOT_FOUND = new MessageBuilder("archgpt.npc-not-found")
-            .withDefault("<negative>NPC <name> not found.")
+    public static final Message CLEAR_STORAGE_SUCCESS = new MessageBuilder("archgpt.clearconversations.success")
+            .withDefault("<positive>All conversation history successfully deleted.")
+            .build();
+    public static final Message CLEAR_STORAGE_ERROR = new MessageBuilder("archgpt.clearconversations.error")
+            .withDefault("<negative>There was an error clearing conversation history.")
+            .build();
+
+    // NPC stuff
+    public static final Message NPC_NOT_FOUND = new MessageBuilder("npc.not-found")
+            .withDefault("<negative>NPC '<name>' not found.")
             .withPlaceholder("name")
             .build();
-    public static final Message NPC_PROMPT_UPDATED = new MessageBuilder("archgpt.npc-prompt-updated")
+    public static final Message NPC_MEMORY_RESET = new MessageBuilder("npc.not-found")
+            .withDefault("<positive>Memory for NPC '<name>' has been reset.")
+            .withPlaceholder("name")
+            .build();
+    public static final Message NPC_PROMPT_UPDATED = new MessageBuilder("npc.prompt-updated")
             .withDefault("<positive>Prompt for <name> updated successfully.")
             .withPlaceholder("name")
             .build();

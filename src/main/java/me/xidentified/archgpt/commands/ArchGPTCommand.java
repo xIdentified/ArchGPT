@@ -4,6 +4,7 @@ import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -27,45 +28,107 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
-        if (args.length > 0) {
-            if (args[0].equalsIgnoreCase("reload")) {
-                if (!sender.hasPermission("archgpt.reload")) {
-                    plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
-                    return true;
-                }
+        if (!sender.hasPermission("archgpt.admin")) {
+            plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
+            return true;
+        }
+
+        if (args.length == 0) {
+            plugin.sendMessage(sender, Messages.CMD_USAGE);
+            return true;
+        }
+
+        switch (args[0].toLowerCase()) {
+            case "reload":
                 plugin.reloadConfig();
                 // TODO: Unregister and register listeners
                 plugin.sendMessage(sender, Messages.RELOAD_SUCCESS);
-                return true;
-            } else if (args[0].equalsIgnoreCase("clear-all-conversations")) {
-                if (!sender.hasPermission("archgpt.admin")) {
-                    plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
-                    return true;
-                }
+                break;
+
+            case "clear-all-conversations":
                 clearConversationStorage(sender);
-                return true;
-            } else if (args[0].equalsIgnoreCase("version")) {
-                if (!sender.hasPermission("archgpt.admin")) {
-                    plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
-                    return true;
-                }
+                break;
+
+            case "version":
                 displayVersionInfo(sender);
-                return true;
-            } else if (args[0].equalsIgnoreCase("setnpc")) {
+                break;
+
+            case "setnpc":
                 if (args.length < 3) {
-                    sender.sendMessage("Usage: /archgpt setnpc <npcname> <prompt>");
+                    plugin.sendMessage(sender, Messages.SETNPC_CMD_USAGE);
                     return true;
                 }
                 String npcName = args[1];
                 String prompt = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
                 setNpcPrompt(sender, npcName, prompt);
-                return true;
-            }
+                break;
+
+            case "broadcast":
+                handleBroadcastCommand(sender, args);
+                break;
+
+            case "resetnpcmemory":
+                handleResetNpcMemoryCommand(sender, args);
+                break;
+
+            case "debug":
+                toggleDebugMode(sender);
+                break;
+
+            default:
+                plugin.sendMessage(sender, Messages.CMD_USAGE);
+                break;
+        }
+        return true;
+    }
+
+    private void handleBroadcastCommand(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            plugin.sendMessage(sender, Messages.BROADCAST_CMD_USAGE);
+            return;
         }
 
-            plugin.sendMessage(sender, Messages.CMD_USAGE);
-            return true;
+        String npcName = args[1];
+        String messageText = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        Component response = Component.text(messageText);
+
+        broadcastNpcMessage(npcName, response);
+    }
+
+    private void broadcastNpcMessage(String npcName, Component response) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            plugin.getManager().getConversationUtils().sendNPCMessage(player, npcName, response);
         }
+    }
+
+    private void handleResetNpcMemoryCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            plugin.sendMessage(sender, Messages.RESETMEMORY_CMD_USAGE);
+            return;
+        }
+
+        String npcName = args[1];
+        NPC npc = findNpcByName(npcName);
+        if (npc == null) {
+            plugin.sendMessage(sender, Messages.NPC_NOT_FOUND.formatted(
+                    Placeholder.unparsed("name", npcName)
+            ));
+            return;
+        }
+
+        plugin.getConversationDAO().clearConversationsForNpc(npcName);
+        plugin.sendMessage(sender, Messages.NPC_MEMORY_RESET.formatted(
+                Placeholder.unparsed("name", npcName)
+        ));    }
+
+    private void toggleDebugMode(CommandSender sender) {
+        plugin.getConfigHandler().toggleDebugMode();
+        boolean isDebugMode = plugin.getConfigHandler().isDebugMode();
+
+        plugin.sendMessage(sender, Messages.DEBUG_MODE.formatted(
+                Placeholder.parsed("toggle", String.valueOf(isDebugMode))
+        ));
+    }
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, Command command, @NotNull String alias, String[] args) {
@@ -73,7 +136,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
 
         if (command.getName().equalsIgnoreCase("archgpt") && args.length == 1) {
             if (sender.hasPermission("archgpt.admin")) {
-                completions.addAll(Arrays.asList("version", "reload", "setnpc", "clear-all-conversations"));
+                completions.addAll(Arrays.asList("broadcast", "version", "reload", "setnpc", "reset-npc-memory", "clear-all-conversations", "debug"));
             }
         }
 

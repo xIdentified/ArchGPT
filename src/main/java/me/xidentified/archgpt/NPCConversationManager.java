@@ -1,7 +1,5 @@
 package me.xidentified.archgpt;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import lombok.Getter;
 import me.xidentified.archgpt.storage.model.Conversation;
@@ -106,14 +104,14 @@ public class NPCConversationManager {
 
         // Fetch past conversations asynchronously and update the conversation state
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName);
+            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
             // Ensure this runs on the main thread
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 List<Component> updatedConversationState = new ArrayList<>(initialConversationState);
                 for (Conversation pastConversation : pastConversations) {
                     Component pastMessage = Component.text(pastConversation.getMessage());
                     updatedConversationState.add(pastMessage);
-                    plugin.debugLog("Added previous message: " + pastMessage);
+                    plugin.debugLog("Added previous message: " + pastConversation.getMessage());
                 }
                 npcChatStatesCache.put(playerUUID, updatedConversationState);
             });
@@ -206,11 +204,7 @@ public class NPCConversationManager {
 
         // Add the player's current message, with parsed placeholders
         JsonObject userMessageJson = new JsonObject();
-        Gson gson = new GsonBuilder().create();
-        String sanitizedPlayerMessage = gson.toJson(PlainTextComponentSerializer.plainText().serialize(playerMessage));
-
-        // Since gson.toJson() adds additional quotes, we need to remove them
-        sanitizedPlayerMessage = sanitizedPlayerMessage.substring(1, sanitizedPlayerMessage.length() - 1);
+        String sanitizedPlayerMessage = PlainTextComponentSerializer.plainText().serialize(playerMessage);
 
         userMessageJson.addProperty("role", "user");
         userMessageJson.addProperty("content", sanitizedPlayerMessage);

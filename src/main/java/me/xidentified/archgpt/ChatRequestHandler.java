@@ -129,50 +129,12 @@ public class ChatRequestHandler {
         if (responseObject.has("choices") && !responseObject.getAsJsonArray("choices").isEmpty()) {
             JsonObject choice = responseObject.getAsJsonArray("choices").get(0).getAsJsonObject();
             if (choice.has("message") && choice.getAsJsonObject("message").has("content")) {
-                String responseText = choice.getAsJsonObject("message").get("content").getAsString().trim();
-
-                // Check if the long messages should be split
-                boolean shouldSplitLongMessages = plugin.getConfigHandler().isShouldSplitLongMsg();
-                if (shouldSplitLongMessages) {
-                    return insertBreakTags(responseText);
-                } else {
-                    return responseText;
-                }
+                return choice.getAsJsonObject("message").get("content").getAsString().trim();
             }
         }
         plugin.getLogger().warning("Invalid response structure from ChatGPT API");
         plugin.debugLog("ChatGPT API response object: " + responseObject);
         return "";
-    }
-
-    private String insertBreakTags(String text) {
-        int sentenceCountPerChunk = 2;
-        StringBuilder modifiedText = new StringBuilder();
-        int sentenceCount = 0;
-        int startIndex = 0;
-
-        for (int i = 0; i < text.length(); i++) {
-            // Check for sentence end (considering space or end of text after punctuation)
-            if ((text.charAt(i) == '.' || text.charAt(i) == '?' || text.charAt(i) == '!') && (i + 1 == text.length() || text.charAt(i + 1) == ' ')) {
-                sentenceCount++;
-                if (sentenceCount == sentenceCountPerChunk) {
-                    // Add the text chunk to the modified text
-                    modifiedText.append(text.substring(startIndex, i + 1).trim());
-                    if (i + 1 < text.length()) {
-                        modifiedText.append("<br>");
-                    }
-                    startIndex = i + 1;
-                    sentenceCount = 0;
-                }
-            }
-        }
-
-        // Add the remaining part of the text if any
-        if (startIndex < text.length()) {
-            modifiedText.append(text.substring(startIndex).trim());
-        }
-
-        return modifiedText.toString();
     }
 
     @NotNull

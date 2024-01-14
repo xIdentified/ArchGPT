@@ -124,10 +124,7 @@ public class ArchGPT extends JavaPlugin {
             String storageType = getConfig().getString("storage.type", "sqlite");
             switch (storageType.toLowerCase()) {
                 case "sqlite":
-                    // Create the SQLite file in the plugin's storage directory
-                    getLogger().warning("Initializing SQLite database for conversations.");
                     File sqliteFile = new File(getDataFolder(), "storage/conversations.db");
-                    getLogger().warning("SQLite file path: " + sqliteFile.getAbsolutePath());
                     conversationDAO = new SQLiteConversationDAO(sqliteFile);
                     break;
                 case "mysql":

@@ -3,6 +3,8 @@ package me.xidentified.archgpt.storage.dao;
 import me.xidentified.archgpt.storage.model.Conversation;
 
 import java.sql.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -60,13 +62,17 @@ public class MySQLConversationDAO implements ConversationDAO {
     }
 
     @Override
-    public List<Conversation> getConversations(UUID playerUUID, String npcName) {
+    public List<Conversation> getConversations(UUID playerUUID, String npcName, Duration memoryDuration) {
         List<Conversation> conversations = new ArrayList<>();
-        String query = "SELECT * FROM conversations WHERE player_uuid = ? AND npc_name = ? ORDER BY timestamp DESC LIMIT 100";
+        long durationMillis = memoryDuration.toMillis();
+        long cutoffTimestamp = Instant.now().toEpochMilli() - durationMillis;
+
+        String query = "SELECT * FROM conversations WHERE player_uuid = ? AND npc_name = ? AND timestamp > ? ORDER BY timestamp DESC";
         try (Connection conn = DriverManager.getConnection(url, username, password);
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, playerUUID.toString());
             stmt.setString(2, npcName);
+            stmt.setLong(3, cutoffTimestamp);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String message = rs.getString("message");
@@ -90,6 +96,18 @@ public class MySQLConversationDAO implements ConversationDAO {
         } catch (SQLException e) {
             // Handle exceptions
             throw new RuntimeException("Error clearing conversations: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void clearConversationsForNpc(String npcName) {
+        try (Connection conn = DriverManager.getConnection(url, username, password);
+             PreparedStatement stmt = conn.prepareStatement(
+                     "DELETE FROM conversations WHERE npc_name = ?")) {
+            stmt.setString(1, npcName);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 

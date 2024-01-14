@@ -7,8 +7,11 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.time.Duration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Getter
@@ -25,7 +28,7 @@ public class ArchGPTConfig {
     private String npcNameColor;
     private String playerNameColor;
     private String npcMessageColor;
-    private int npcMemoryDuration;
+    private Duration npcMemoryDuration;
     private int minCharLength;
     private int maxResponseLength;
     private long chatCooldownMillis;
@@ -54,7 +57,8 @@ public class ArchGPTConfig {
         playerNameColor = config.getString("chat_colors.player_name");
         npcMessageColor = config.getString("chat_colors.npc_message");
         playerMessageColor = config.getString("chat_colors.player_message");
-        npcMemoryDuration = config.getInt("npc_memory_duration", 7);
+        String durationString = config.getString("npc_memory_duration", "7d");
+        npcMemoryDuration = parseDuration(durationString);
         shouldSplitLongMsg = config.getBoolean("split_long_messages", false);
 
         // Set the logger level based on debugMode
@@ -98,6 +102,37 @@ public class ArchGPTConfig {
 
         // Return the combined prompt
         return combinedPrompt;
+    }
+
+    private Duration parseDuration(String durationString) {
+        Pattern pattern = Pattern.compile("(?:(\\d+)w)?\\s*(?:(\\d+)d)?\\s*(?:(\\d+)h)?\\s*(?:(\\d+)m)?");
+        Matcher matcher = pattern.matcher(durationString);
+
+        if (matcher.matches()) {
+            long weeks = matcher.group(1) != null ? Long.parseLong(matcher.group(1)) : 0;
+            long days = matcher.group(2) != null ? Long.parseLong(matcher.group(2)) : 0;
+            long hours = matcher.group(3) != null ? Long.parseLong(matcher.group(3)) : 0;
+            long minutes = matcher.group(4) != null ? Long.parseLong(matcher.group(4)) : 0;
+
+            return Duration.ofMinutes(minutes)
+                    .plusHours(hours)
+                    .plusDays(days)
+                    .plusDays(weeks * 7);
+        }
+        throw new IllegalArgumentException("Invalid duration format: " + durationString);
+    }
+
+    public void toggleDebugMode() {
+        debugMode = !debugMode; // Toggle debug mode
+        Level loggerLevel = debugMode ? Level.INFO : Level.WARNING;
+        logger.setLevel(loggerLevel);
+
+        // Save the updated debug mode to the config
+        FileConfiguration config = plugin.getConfig();
+        config.set("debug_mode", debugMode);
+        plugin.saveConfig();
+
+        logger.info("Debug mode is now " + (debugMode ? "enabled" : "disabled"));
     }
 
     public void printConfigToConsole() {
