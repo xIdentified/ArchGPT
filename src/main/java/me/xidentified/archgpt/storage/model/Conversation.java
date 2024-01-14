@@ -10,12 +10,13 @@ public class Conversation {
     private final String npcName;
     private final String message;
     private final long timestamp;
+    private final boolean isFromNPC;
 
     public Conversation(UUID playerUUID, String npcName, String message, long timestamp) {
         this.playerUUID = playerUUID;
         this.npcName = npcName;
         this.message = message;
         this.timestamp = timestamp;
+        this.isFromNPC = isFromNPC;
     }
-
 }

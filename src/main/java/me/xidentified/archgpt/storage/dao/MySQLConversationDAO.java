@@ -50,11 +50,12 @@ public class MySQLConversationDAO implements ConversationDAO {
     public void saveConversation(Conversation conversation) {
         try (Connection conn = DriverManager.getConnection(url, username, password);
              PreparedStatement stmt = conn.prepareStatement(
-                     "INSERT INTO conversations (player_uuid, npc_name, message, timestamp) VALUES (?, ?, ?, ?)")) {
+                     "INSERT INTO conversations (player_uuid, npc_name, message, timestamp, is_from_npc) VALUES (?, ?, ?, ?, ?)")) {
             stmt.setString(1, conversation.getPlayerUUID().toString());
             stmt.setString(2, conversation.getNpcName());
             stmt.setString(3, conversation.getMessage());
             stmt.setLong(4, conversation.getTimestamp());
+            stmt.setBoolean(5, conversation.isFromNPC());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -77,7 +78,8 @@ public class MySQLConversationDAO implements ConversationDAO {
                 while (rs.next()) {
                     String message = rs.getString("message");
                     long timestamp = rs.getLong("timestamp");
-                    conversations.add(new Conversation(playerUUID, npcName, message, timestamp));
+                    boolean isFromNPC = rs.getBoolean("is_from_npc");
+                    conversations.add(new Conversation(playerUUID, npcName, message, timestamp, isFromNPC));
                 }
             }
         } catch (SQLException e) {

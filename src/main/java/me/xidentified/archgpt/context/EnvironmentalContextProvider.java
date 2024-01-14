@@ -60,7 +60,7 @@ public class EnvironmentalContextProvider {
     }
 
     public String getPointsOfInterestContext() {
-        StringBuilder poiContext = new StringBuilder("There are several important landmarks in the server: ");
+        StringBuilder poiContext = new StringBuilder("Existing landmarks on the server are: ");
         ConcurrentHashMap<String, String> worldPOIs = pointsOfInterest.get(player.getWorld().getName());
 
         if (worldPOIs != null) {

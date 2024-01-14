@@ -109,25 +109,34 @@ public class NPCConversationManager {
                 Placeholder.unparsed("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase")))
         ));
 
-        // Fetch past conversations asynchronously and update the conversation state
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                List<JsonObject> updatedConversationState = new ArrayList<>(initialConversationState);
-                for (Conversation pastConversation : pastConversations) {
-                    JsonObject pastMessageJson = new JsonObject();
-                    pastMessageJson.addProperty("role", "user"); // or "assistant" based on who said it
-                    pastMessageJson.addProperty("content", pastConversation.getMessage());
-                    updatedConversationState.add(pastMessageJson);
-                    plugin.debugLog("Added previous message: " + pastConversation.getMessage());
-                }
-                npcChatStatesCache.put(playerUUID, updatedConversationState);
-            });
-        });
+        // Update conversation state with past conversations
+        addPastConversations(playerUUID, npcName);
 
         // Start timeout
         conversationTimeoutManager.startConversationTimeout(playerUUID);
     }
+
+    public void addPastConversations(UUID playerUUID, String npcName) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                List<JsonObject> updatedConversationState = new ArrayList<>();
+                for (Conversation pastConversation : pastConversations) {
+                    JsonObject pastMessageJson = new JsonObject();
+                    String role = pastConversation.isFromNPC() ? "assistant" : "user";
+                    pastMessageJson.addProperty("role", role);
+                    pastMessageJson.addProperty("content", pastConversation.getMessage());
+                    updatedConversationState.add(pastMessageJson);
+                    plugin.debugLog("Added previous message: " + pastConversation.getMessage());
+                }
+                // Add the initial conversation state, if any, at the beginning of the list
+                List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
+                updatedConversationState.addAll(0, initialConversationState);
+                npcChatStatesCache.put(playerUUID, updatedConversationState);
+            });
+        });
+    }
+
 
     public void endConversation(UUID playerUUID) {
         plugin.debugLog("Conversation ended for player " + playerUUID);
