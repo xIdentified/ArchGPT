@@ -136,7 +136,7 @@ public class NPCEventListener implements Listener {
                         if (greeting != null) {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 // Utilize the sendNPCMessage method to send the greeting
-                                conversationManager.getConversationUtils().sendNPCMessage(player, npc.getName(), greeting);
+                                conversationManager.getConversationUtils().sendNPCMessage(player, npc, greeting);
 
                                 // For new players, a hologram appears prompting them to right-click the NPC to interact
                                 if (!player.hasPlayedBefore()) {

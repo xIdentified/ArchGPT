@@ -77,9 +77,7 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
 
             // Place the player into the reporting state to provide feedback
             plugin.getReportManager().enterReportingState(player.getUniqueId());
-            plugin.sendMessage(player, Messages.REPORT_TYPE_SELECTED.formatted(
-                    Placeholder.unparsed("type", selectedType)
-            ));
+            plugin.sendMessage(player, Messages.REPORT_TYPE_SELECTED.insertString("type", selectedType));
         }
         return true;
     }

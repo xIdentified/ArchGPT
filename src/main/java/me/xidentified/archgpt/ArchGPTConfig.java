@@ -24,10 +24,6 @@ public class ArchGPTConfig {
     private String defaultPrompt;
     private String apiKey;
     private String chatGptEngine;
-    private String playerMessageColor;
-    private String npcNameColor;
-    private String playerNameColor;
-    private String npcMessageColor;
     private Duration npcMemoryDuration;
     private int minCharLength;
     private int maxResponseLength;
@@ -53,10 +49,6 @@ public class ArchGPTConfig {
         minCharLength = config.getInt("min_char_length", 10);
         maxResponseLength = config.getInt("max_response_length", 200); // in tokens
         chatCooldownMillis = config.getLong("chat_cooldown", 3000);
-        npcNameColor = config.getString("chat_colors.npc_name");
-        playerNameColor = config.getString("chat_colors.player_name");
-        npcMessageColor = config.getString("chat_colors.npc_message");
-        playerMessageColor = config.getString("chat_colors.player_message");
         String durationString = config.getString("npc_memory_duration", "7d");
         npcMemoryDuration = parseMinecraftDuration(durationString);
         shouldSplitLongMsg = config.getBoolean("split_long_messages", false);
