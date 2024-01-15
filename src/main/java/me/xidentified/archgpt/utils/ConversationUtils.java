@@ -135,42 +135,34 @@ public class ConversationUtils {
         return false;
     }
 
-    public void sendPlayerMessage(Player player, Component playerMessage) {
-        String messageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
+    public void sendPlayerMessage(Player player, Component message) {
 
-        plugin.sendMessage(player, Messages.GENERAL_PLAYER_MESSAGE.formatted(
-                Placeholder.unparsed("player_name", "You"),
-                Placeholder.parsed("player_name_color", configHandler.getPlayerNameColor()),
-                Placeholder.unparsed("message", messageText),
-                Placeholder.parsed("message_color", configHandler.getPlayerMessageColor())
-                ));
+        plugin.sendMessage(player, Messages.GENERAL_PLAYER_MESSAGE
+                        .insertObject("player", player)
+                        .insertComponent("message", message));
     }
 
-    public void sendNPCMessage(Player player, String npcName, Component response) {
+    public void sendNPCMessage(Player player, NPC npc, String response) {
         boolean splitLongMessages = configHandler.isShouldSplitLongMsg();
-        String responseText = PlainTextComponentSerializer.plainText().serialize(response);
 
         if (splitLongMessages) {
             // Split the response into parts after every few sentences and send each part as a separate message
-            String[] sentences = responseText.split("(?<=[.!?])\\s+");
+            String[] sentences = response.split("(?<=[.!?])\\s+");
             for (int i = 0; i < sentences.length; i += 2) {
                 String partText = StringUtils.join(sentences, ' ', i, Math.min(i + 2, sentences.length));
-                sendMessageFormatted(player, partText, npcName);
+                sendMessageFormatted(player, npc, partText);
             }
         } else {
             // Send the entire response as a single message
-            sendMessageFormatted(player, responseText, npcName);
+            sendMessageFormatted(player, npc, response);
         }
     }
 
-    private void sendMessageFormatted(Player player, String message, String npcName) {
+    private void sendMessageFormatted(Player player, NPC npc, String message) {
         // Prepare and send formatted NPC message
-        plugin.sendMessage(player, Messages.GENERAL_NPC_MESSAGE.formatted(
-                Placeholder.unparsed("npc_name", npcName),
-                Placeholder.parsed("npc_name_color", configHandler.getNpcNameColor()),
-                Placeholder.unparsed("message", message),
-                Placeholder.parsed("message_color", configHandler.getNpcMessageColor())
-        ));
+        plugin.sendMessage(player, Messages.GENERAL_NPC_MESSAGE
+                .insertObject("npc", npc)
+                .insertString("message", message));
     }
 
     public List<String> filterShortSentences(String message, int minLength) {

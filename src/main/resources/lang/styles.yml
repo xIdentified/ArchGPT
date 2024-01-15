@@ -1,0 +1,14 @@
+# How to render npc names in conversations
+npc_name: <#37b5fc>{slot}</#37b5fc>
+# How to render player names in conversations
+player_name: <green>{slot}</green>
+
+# wraps all warnings
+# override default one that has exclamation mark in the beginning
+prefix_warning: <warning>{slot}</warning>
+prefix_negative: <negative>{slot}</negative>
+
+# Since ArchGPT does not use prefix we simply render the content in text color
+prefix: <text>{slot}</text>
+# Since ArchGPT messages are supposed to be green lets render them with the positive style
+text: <positive>{slot}</positive>

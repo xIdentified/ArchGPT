@@ -6,12 +6,12 @@ general:
   player_not_found: "<negative>Spieler nicht gefunden: <name>"
   chat_cooldown: "<negative>Bitte warte, bevor du eine weitere Nachricht sendest."
 reload:
-  success: "<positive>ArchGPT erfolgreich neu geladen!"
-  usage: "<positive>Verwendung: /archgpt reload"
+  success: "<prefix>ArchGPT erfolgreich neu geladen!"
+  usage: "<prefix>Verwendung: /archgpt reload"
 report:
-  deleted: "<positive>Bericht erfolgreich gelöscht."
-  submitted: "<positive>Vielen Dank, dein Bericht wurde eingereicht. Gib 'abbrechen' ein, um das Gespräch zu beenden."
-  type_selected: "<positive>Du hast <type> ausgewählt. Gib dein Feedback zur letzten NPC-Nachricht ein."
+  deleted: "<prefix>Bericht erfolgreich gelöscht."
+  submitted: "<prefix>Vielen Dank, dein Bericht wurde eingereicht. Gib 'abbrechen' ein, um das Gespräch zu beenden."
+  type_selected: "<prefix>Du hast <type> ausgewählt. Gib dein Feedback zur letzten NPC-Nachricht ein."
   select_type: "<negative>Bitte klicke einen der obigen Berichtstypen an, um fortzufahren."
   none_to_display: "<negative>Es gibt keine Berichte zum Anzeigen."
 conversation:

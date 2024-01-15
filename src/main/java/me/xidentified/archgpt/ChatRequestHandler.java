@@ -103,10 +103,10 @@ public class ChatRequestHandler {
                     return null;
         }).thenApply(assistantResponseText -> {
             // Process the response and prepare final result
-            Component responseComponent = Component.text(assistantResponseText.trim());
+            String response = assistantResponseText.trim();
 
             if (requestType == RequestType.GREETING) {
-                return responseComponent;
+                return response;
             } else {
                 // Additional processing for non-greeting requests
                 String sanitizedPlayerMessage = PlainTextComponentSerializer.plainText().serialize(playerMessageComponent);
@@ -122,10 +122,10 @@ public class ChatRequestHandler {
 
                 JsonObject assistantMessageJson = new JsonObject();
                 assistantMessageJson.addProperty("role", "assistant");
-                assistantMessageJson.addProperty("content", PlainTextComponentSerializer.plainText().serialize(responseComponent));
+                assistantMessageJson.addProperty("content", response);
                 conversationState.add(assistantMessageJson);
 
-                return Pair.of(responseComponent, conversationState);
+                return Pair.of(response, conversationState);
             }
         });
     }

@@ -65,7 +65,7 @@ public class NPCConversationManager {
         return systemMessage;
     }
 
-    public CompletableFuture<Component> getGreeting(Player player, NPC npc) {
+    public CompletableFuture<String> getGreeting(Player player, NPC npc) {
         // Prepare the API request
         JsonObject requestBodyJson = new JsonObject();
         String chatGptEngine = configHandler.getChatGptEngine();
@@ -93,7 +93,7 @@ public class NPCConversationManager {
         // Add messages to the request body and process the request
         requestBodyJson.add("messages", messages);
         return getChatRequestHandler().processChatGPTRequest(player, requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
-                .thenApply(responseObject -> (Component) responseObject);
+                .thenApply(responseObject -> (String) responseObject);
     }
 
     public void startConversation(Player player, NPC npc) {
@@ -112,10 +112,9 @@ public class NPCConversationManager {
         npcChatStatesCache.put(playerUUID, initialConversationState);
         plugin.getActiveConversations().put(playerUUID, true);
 
-        plugin.sendMessage(player, Messages.CONVERSATION_STARTED.formatted(
-                Placeholder.unparsed("npc", npcName),
-                Placeholder.unparsed("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase")))
-        ));
+        plugin.sendMessage(player, Messages.CONVERSATION_STARTED
+                .insertObject("npc", npc)
+                .insertString("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase"))));
 
         // Update conversation state with past conversations
         addPastConversations(playerUUID, npcName);
@@ -177,9 +176,7 @@ public class NPCConversationManager {
         UUID playerUUID = player.getUniqueId();
 
         if (PlainTextComponentSerializer.plainText().serialize(playerMessage).length() < configHandler.getMinCharLength()) {
-            plugin.sendMessage(player, Messages.MSG_TOO_SHORT.formatted(
-                    Placeholder.unparsed("size", String.valueOf(configHandler.getMinCharLength()))
-            ));
+            plugin.sendMessage(player, Messages.MSG_TOO_SHORT.insertNumber("size", configHandler.getMinCharLength()));
             return;
         }
 
@@ -248,7 +245,7 @@ public class NPCConversationManager {
                     Object leftObject = rawPair.getLeft();
                     Object rightObject = rawPair.getRight();
 
-                    if (leftObject instanceof Component response && rightObject instanceof List<?>) {
+                    if (leftObject instanceof String response && rightObject instanceof List<?>) {
                         // Check if the list contains JsonObjects
                         if (((List<?>) rawPair.getRight()).stream().allMatch(item -> item instanceof JsonObject)) {
                             @SuppressWarnings("unchecked") // Safe after checking all elements
@@ -259,16 +256,14 @@ public class NPCConversationManager {
                             }
 
                             NPC npc = playerNPCMap.get(playerUUID);
-                            String npcName = npc.getName();
                             new BukkitRunnable() {
                                 @Override
                                 public void run() {
                                     if (plugin.getActiveConversations().containsKey(playerUUID)) {
-                                        conversationUtils.sendNPCMessage(player, npcName, response);
+                                        conversationUtils.sendNPCMessage(player, npc, response);
 
                                         // Save the conversation if the response is longer than a minimum length
-                                        String responseText = PlainTextComponentSerializer.plainText().serialize(response);
-                                        List<String> relevantSentences = conversationUtils.filterShortSentences(responseText, ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
+                                        List<String> relevantSentences = conversationUtils.filterShortSentences(response, ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
 
                                         if (!relevantSentences.isEmpty()) {
                                             String filteredResponseText = String.join(" ", relevantSentences);

@@ -1,12 +1,11 @@
 package me.xidentified.archgpt;
 
 import com.google.cloud.language.v2.*;
-import de.cubbossa.translations.Message;
-import de.cubbossa.translations.StyleSet;
-import de.cubbossa.translations.Translations;
-import de.cubbossa.translations.TranslationsFramework;
-import de.cubbossa.translations.persistent.YamlMessageStorage;
-import de.cubbossa.translations.persistent.YamlStyleStorage;
+import de.cubbossa.tinytranslations.TinyTranslations;
+import de.cubbossa.tinytranslations.TinyTranslationsBukkit;
+import de.cubbossa.tinytranslations.Translator;
+import de.cubbossa.tinytranslations.persistent.YamlMessageStorage;
+import de.cubbossa.tinytranslations.persistent.YamlStyleStorage;
 import lombok.Getter;
 import me.xidentified.archgpt.commands.AdminReportCommandExecutor;
 import me.xidentified.archgpt.commands.ArchGPTCommand;
@@ -17,9 +16,11 @@ import me.xidentified.archgpt.storage.dao.ConversationDAO;
 import me.xidentified.archgpt.storage.dao.MySQLConversationDAO;
 import me.xidentified.archgpt.storage.dao.SQLiteConversationDAO;
 import me.xidentified.archgpt.utils.*;
+import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentLike;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -61,8 +62,7 @@ public class ArchGPT extends JavaPlugin {
     private NPCConversationManager conversationManager;
     private LanguageServiceClient languageServiceClient; // for Google Cloud language
     private ConversationDAO conversationDAO;
-    BukkitAudiences audiences;
-    Translations translations;
+    Translator translations;
 
     @Override
     public void onEnable() {
@@ -78,13 +78,18 @@ public class ArchGPT extends JavaPlugin {
             this.hologramManager = new HologramManager(this);
             this.reportManager = new ReportManager(this);
 
-            audiences = BukkitAudiences.create(this);
-            TranslationsFramework.enable(new File(getDataFolder(), "/../"));
-            translations = TranslationsFramework.application("ArchGPT");
+            translations = TinyTranslationsBukkit.application(this);
             translations.setMessageStorage(new YamlMessageStorage(new File(getDataFolder(), "/lang/")));
             translations.setStyleStorage(new YamlStyleStorage(new File(getDataFolder(), "/lang/styles.yml")));
 
-            translations.addMessages(TranslationsFramework.messageFieldsFromClass(Messages.class));
+            TinyTranslationsBukkit.NM.getObjectTypeResolverMap().put(NPC.class, Map.of(
+                    "name", NPC::getName,
+                    "fullname", NPC::getFullName,
+                    "id", NPC::getId,
+                    "uuid", NPC::getUniqueId
+            ), npc -> Component.text(npc.getName()));
+
+            translations.addMessages(TinyTranslations.messageFieldsFromClass(Messages.class));
 
             loadLanguages();
 
@@ -171,41 +176,21 @@ public class ArchGPT extends JavaPlugin {
     }
 
     public void loadLanguages() {
+        if (!new File(getDataFolder(), "/lang/styles.yml").exists()) {
+            this.saveResource("lang/styles.yml", false);
+        }
         this.translations.loadStyles();
-        boolean saveStyles = false;
-        StyleSet set = this.translations.getStyleSet();
-        if (!set.containsKey("negative")) {
-            this.translations.getStyleSet().put("negative", "<red>");
-            saveStyles = true;
-        }
-
-        if (!set.containsKey("positive")) {
-            this.translations.getStyleSet().put("positive", "<green>");
-            saveStyles = true;
-        }
-
-        if (!set.containsKey("warning")) {
-            this.translations.getStyleSet().put("warning", "<yellow>");
-            saveStyles = true;
-        }
-
-        if (saveStyles) {
-            this.translations.saveStyles();
-        }
 
         this.translations.saveLocale(Locale.ENGLISH);
-
-        this.saveResource("lang/de.yml", false);
+        // wrap with if statement to prevent spigot console warning
+        if (!new File(getDataFolder(), "/lang/de.yml").exists()) {
+            this.saveResource("lang/de.yml", false);
+        }
         this.translations.loadLocales();
     }
 
     public void sendMessage(CommandSender sender, ComponentLike componentLike) {
-        Audience audience = audiences.sender(sender);
-        if (componentLike instanceof Message msg) {
-            // Translate the message into the locale of the command sender
-            componentLike = msg.formatted(audience);
-        }
-        audience.sendMessage(componentLike);
+        TinyTranslationsBukkit.sendMessage(sender, componentLike);
     }
 
     @Override
@@ -223,10 +208,10 @@ public class ArchGPT extends JavaPlugin {
             hologramManager.getPlayerHolograms().clear();
         }
 
-        // Close translations framework
-        audiences.close();
-        translations.close();
-        TranslationsFramework.disable();
+        if (translations != null) {
+            // Close translations framework
+            translations.close();
+        }
 
         // Unregister events
         HandlerList.unregisterAll();

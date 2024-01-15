@@ -41,6 +41,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "reload":
                 plugin.reloadConfig();
+                plugin.loadLanguages();
                 // TODO: Unregister and register listeners
                 plugin.sendMessage(sender, Messages.RELOAD_SUCCESS);
                 break;
@@ -89,15 +90,26 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
         }
 
         String npcName = args[1];
-        String messageText = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
-        Component response = Component.text(messageText);
+        NPC npc = null;
+		for (NPC current : CitizensAPI.getNPCRegistry()) {
+			if (current.getName().equals(npcName)) {
+				npc = current;
+				break;
+			}
+		}
+        if (npc == null) {
+            // TODO error handling
+            return;
+        }
 
-        broadcastNpcMessage(npcName, response);
+        String messageText = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+
+        broadcastNpcMessage(npc, messageText);
     }
 
-    private void broadcastNpcMessage(String npcName, Component response) {
+    private void broadcastNpcMessage(NPC npc, String response) {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            plugin.getConversationManager().getConversationUtils().sendNPCMessage(player, npcName, response);
+            plugin.getConversationManager().getConversationUtils().sendNPCMessage(player, npc, response);
         }
     }
 
@@ -110,25 +122,19 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
         String npcName = args[1];
         NPC npc = findNpcByName(npcName);
         if (npc == null) {
-            plugin.sendMessage(sender, Messages.NPC_NOT_FOUND.formatted(
-                    Placeholder.unparsed("name", npcName)
-            ));
+            plugin.sendMessage(sender, Messages.NPC_NOT_FOUND.insertString("name", npcName));
             return;
         }
 
         plugin.getConversationDAO().clearConversationsForNpc(npcName);
-        plugin.sendMessage(sender, Messages.NPC_MEMORY_RESET.formatted(
-                Placeholder.unparsed("name", npcName)
-        ));
+        plugin.sendMessage(sender, Messages.NPC_MEMORY_RESET.insertObject("npc", npc));
     }
 
     private void toggleDebugMode(CommandSender sender) {
         plugin.getConfigHandler().toggleDebugMode();
         boolean isDebugMode = plugin.getConfigHandler().isDebugMode();
 
-        plugin.sendMessage(sender, Messages.DEBUG_MODE.formatted(
-                Placeholder.parsed("toggle", String.valueOf(isDebugMode))
-        ));
+        plugin.sendMessage(sender, Messages.DEBUG_MODE.insertBool("toggle", isDebugMode));
     }
 
     @Override
@@ -172,9 +178,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
     private void setNpcPrompt(CommandSender sender, String npcName, String prompt) {
         NPC npc = findNpcByName(npcName);
         if (npc == null) {
-            plugin.sendMessage(sender, Messages.NPC_NOT_FOUND.formatted(
-                    Placeholder.unparsed("name", npcName)
-            ));
+            plugin.sendMessage(sender, Messages.NPC_NOT_FOUND.insertString("name", npcName));
             return;
         }
 
@@ -183,9 +187,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
 
         // Update the NPC's prompt in the configuration
         config.set("npcs." + npc.getName(), prompt);
-        plugin.sendMessage(sender, Messages.NPC_PROMPT_UPDATED.formatted(
-                Placeholder.unparsed("name", npcName)
-        ));
+        plugin.sendMessage(sender, Messages.NPC_PROMPT_UPDATED.insertObject("npc", npc));
 
         // Save changes to the configuration
         plugin.saveConfig();

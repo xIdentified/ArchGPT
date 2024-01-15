@@ -41,7 +41,8 @@
                             <minimizeJar>true</minimizeJar>
                             <artifactSet>
                                 <includes>
-                                    <include>de.cubbossa:Translations</include>
+                                    <include>de.cubbossa:TinyTranslations-common</include>
+                                    <include>de.cubbossa:TinyTranslations-bukkit</include>
                                     <include>com.zaxxer:HikariCP</include>
                                     <include>org.bstats</include>>
                                     <include>com.google.auth:*</include>
@@ -51,7 +52,7 @@
                             </artifactSet>
                             <relocations>
                                 <relocation>
-                                    <pattern>de.cubbossa.translations</pattern>
+                                    <pattern>de.cubbossa.tinytranslations</pattern>
                                     <shadedPattern>me.xidentified.archgpt.libs.translations</shadedPattern>
                                 </relocation>
                                 <relocation>
@@ -108,8 +109,13 @@
         </dependency>
         <dependency>
             <groupId>de.cubbossa</groupId>
-            <artifactId>Translations</artifactId>
-            <version>3.2.3</version>
+            <artifactId>TinyTranslations-bukkit</artifactId>
+            <version>4.3.2</version>
+        </dependency>
+        <dependency>
+            <groupId>de.cubbossa</groupId>
+            <artifactId>TinyTranslations-common</artifactId>
+            <version>4.3.2</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5 -->
         <dependency>
