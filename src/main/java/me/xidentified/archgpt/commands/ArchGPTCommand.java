@@ -97,7 +97,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
 
     private void broadcastNpcMessage(String npcName, Component response) {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            plugin.getManager().getConversationUtils().sendNPCMessage(player, npcName, response);
+            plugin.getConversationManager().getConversationUtils().sendNPCMessage(player, npcName, response);
         }
     }
 

@@ -17,7 +17,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -107,9 +106,9 @@ public class NPCConversationManager {
 
         // Add the system message with NPC's context
         JsonObject systemMessageJson = createSystemMessage(npc, player);
-        initialConversationState.add(systemMessageJson);  // This is now a JsonObject directly
+        initialConversationState.add(systemMessageJson);
 
-        // Store the initial conversation state as JsonObjects
+        // Store the initial conversation state
         npcChatStatesCache.put(playerUUID, initialConversationState);
         plugin.getActiveConversations().put(playerUUID, true);
 
@@ -120,8 +119,6 @@ public class NPCConversationManager {
 
         // Update conversation state with past conversations
         addPastConversations(playerUUID, npcName);
-
-        // Start timeout
         conversationTimeoutManager.startConversationTimeout(playerUUID);
     }
 
@@ -130,43 +127,19 @@ public class NPCConversationManager {
             List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 List<JsonObject> updatedConversationState = new ArrayList<>();
-                for (Conversation pastConversation : pastConversations) {
-                    String timeContext = getTimeContext(pastConversation.getTimestamp());
-                    List<String> relevantSentences = conversationUtils.filterShortSentences(pastConversation.getMessage(), ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
-
-                    if (!relevantSentences.isEmpty()) {
-                        String filteredMessage = String.join(" ", relevantSentences);
-                        String contextualMessage = String.format("%s, you spoke about: %s", timeContext, filteredMessage);
-
+                    // Convert past conversations to JsonObjects and add to updatedConversationState
+                    for (Conversation pastConversation : pastConversations) {
                         JsonObject pastMessageJson = new JsonObject();
                         pastMessageJson.addProperty("role", pastConversation.isFromNPC() ? "assistant" : "user");
-                        pastMessageJson.addProperty("content", contextualMessage);
+                        pastMessageJson.addProperty("content", pastConversation.getMessage());
                         updatedConversationState.add(pastMessageJson);
-                        plugin.debugLog("Added previous message: " + contextualMessage);
                     }
-                }
-
+                // Add the initial conversation state, if any, at the beginning of the list
                 List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
                 updatedConversationState.addAll(0, initialConversationState);
                 npcChatStatesCache.put(playerUUID, updatedConversationState);
             });
         });
-    }
-
-    private String getTimeContext(long pastTimestamp) {
-        long currentTimestamp = Instant.now().toEpochMilli();
-        long timeDifferenceMillis = currentTimestamp - pastTimestamp;
-        long timeDifferenceInMinecraftDays = timeDifferenceMillis / (1200 * 1000);  // Convert milliseconds to Minecraft days
-
-        if (timeDifferenceInMinecraftDays < 1) {
-            return "Earlier today";
-        } else if (timeDifferenceInMinecraftDays < 7) {
-            return "A few days ago";
-        } else if (timeDifferenceInMinecraftDays < 30) {
-            return "Earlier this month";
-        } else {
-            return "Some time ago";
-        }
     }
 
     public void endConversation(UUID playerUUID) {
@@ -205,16 +178,6 @@ public class NPCConversationManager {
 
         // Send player message
         conversationUtils.sendPlayerMessage(player, playerMessage);
-
-        // Save the player's message
-        Conversation playerConversation = new Conversation(
-                playerUUID,
-                playerNPCMap.containsKey(playerUUID) ? playerNPCMap.get(playerUUID).getName() : "Unknown NPC",
-                PlainTextComponentSerializer.plainText().serialize(playerMessage),
-                System.currentTimeMillis(),
-                false  // This message is from the player
-        );
-        plugin.getConversationDAO().saveConversation(playerConversation);
 
         // Start animation over NPC head while it processes response
         new BukkitRunnable() {
@@ -257,9 +220,9 @@ public class NPCConversationManager {
 
         // Add the player's current message as a new JsonObject
         JsonObject userMessageJson = new JsonObject();
-        String sanitizedPlayerMessage = PlainTextComponentSerializer.plainText().serialize(playerMessage);
+        String playerMessageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
         userMessageJson.addProperty("role", "user");
-        userMessageJson.addProperty("content", sanitizedPlayerMessage);
+        userMessageJson.addProperty("content", playerMessageText);
         messages.add(userMessageJson);
 
         // Set the 'model', 'messages', and 'max_tokens' fields in the request

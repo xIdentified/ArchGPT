@@ -52,7 +52,7 @@ npc_memory_duration: 7d
 # history to the API each time. I recommend using!
 google_cloud:
   enabled: false
-  key_file: 'path/to/google-cloud-key.json'  # Path to the Google Cloud API key file
+  api_key: 'YOUR_GOOGLE_CLOUD_API_KEY'
 
 storage:
   type: 'sqlite' # Options: sqlite, mysql

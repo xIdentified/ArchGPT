@@ -99,7 +99,7 @@ public class ChatRequestHandler {
         }).exceptionally(ex -> {
                     // Handle exceptions - log the error and end the conversation
                     plugin.getLogger().severe("Error processing ChatGPT request: " + ex.getMessage());
-                    plugin.getManager().endConversation(playerUUID);
+                    plugin.getConversationManager().endConversation(playerUUID);
                     return null;
         }).thenApply(assistantResponseText -> {
             // Process the response and prepare final result

@@ -1,10 +1,13 @@
 package me.xidentified.archgpt.utils;
 
+import com.google.cloud.language.v2.Sentiment;
+import com.google.gson.JsonObject;
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.ArchGPTConfig;
 import me.xidentified.archgpt.NPCConversationManager;
 import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
+import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
@@ -19,10 +22,7 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
