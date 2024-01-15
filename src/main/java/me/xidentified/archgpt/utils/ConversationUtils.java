@@ -9,7 +9,6 @@ import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
@@ -21,20 +20,16 @@ import org.bukkit.util.Vector;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConversationUtils {
     private final ArchGPT plugin;
     private final ArchGPTConfig configHandler;
     private final NPCConversationManager manager;
-    private final ConcurrentHashMap<UUID, AtomicInteger> conversationTokenCounters; //Ensures conversation doesn't go over token limit
 
     public ConversationUtils(ArchGPT plugin, ArchGPTConfig configHandler, NPCConversationManager manager) {
         this.plugin = plugin;
         this.configHandler = configHandler;
         this.manager = manager;
-        this.conversationTokenCounters = new ConcurrentHashMap<>();
     }
 
     // Fetches the current context surrounding the NPC
@@ -46,8 +41,9 @@ public class ConversationUtils {
         PlayerContextProvider playerContext = new PlayerContextProvider(player);
         String environmentalContext = envContext.getFormattedContext(npcPrompt);
         String playerSpecificContext = playerContext.getFormattedContext("");
+        String tokenContext = "Use no more than " + configHandler.getMaxResponseLength() + " completion_tokens in your response.";
 
-        return environmentalContext + " " + playerSpecificContext;
+        return environmentalContext + " " + playerSpecificContext + " " + tokenContext;
     }
 
     public String getTimeContext(long pastTimestamp) {
@@ -176,18 +172,6 @@ public class ConversationUtils {
         }
 
         return filteredSentences;
-    }
-
-    // Update conversation token counter
-    public void updateConversationTokenCounter(UUID playerUUID) {
-        AtomicInteger tokenCounter = conversationTokenCounters.get(playerUUID);
-        if (tokenCounter == null) {
-            tokenCounter = new AtomicInteger(1);
-        } else {
-            int currentValue = tokenCounter.get();
-            tokenCounter.set(currentValue + 1);
-        }
-        conversationTokenCounters.put(playerUUID, tokenCounter);
     }
 
 }

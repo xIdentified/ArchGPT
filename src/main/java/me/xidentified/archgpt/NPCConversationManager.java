@@ -10,7 +10,6 @@ import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import com.google.gson.JsonObject;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -82,7 +81,7 @@ public class NPCConversationManager {
         // Get combined context for the NPC with the specific greeting
         String combinedContext = conversationUtils.getCombinedContext(npc.getName(), player);
         String greetingContext = combinedContext + " A player known as " + player.getName() + " approaches you. " +
-                "Please offer a concise and brief greeting consisting of only one or two sentences.";
+                "Give them a greeting consisting of 40 completion_tokens or less.";
 
         // Add user prompt message with combined context
         JsonObject userMessage = new JsonObject();
@@ -281,8 +280,6 @@ public class NPCConversationManager {
                                     }
                                 }
                             }.runTaskLater(plugin, 20L);
-
-                            conversationUtils.updateConversationTokenCounter(playerUUID);
                             getConversationTimeoutManager().resetConversationTimeout(playerUUID);
                         }
                     }

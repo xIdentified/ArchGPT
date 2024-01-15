@@ -17,7 +17,6 @@ import me.xidentified.archgpt.storage.dao.MySQLConversationDAO;
 import me.xidentified.archgpt.storage.dao.SQLiteConversationDAO;
 import me.xidentified.archgpt.utils.*;
 import net.citizensnpcs.api.npc.NPC;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
@@ -62,6 +61,7 @@ public class ArchGPT extends JavaPlugin {
     private NPCConversationManager conversationManager;
     private LanguageServiceClient languageServiceClient; // for Google Cloud language
     private ConversationDAO conversationDAO;
+    private BukkitAudiences audiences;
     Translator translations;
 
     @Override
@@ -77,6 +77,7 @@ public class ArchGPT extends JavaPlugin {
             this.configHandler = new ArchGPTConfig(this);
             this.hologramManager = new HologramManager(this);
             this.reportManager = new ReportManager(this);
+            this.audiences = BukkitAudiences.create(this);
 
             translations = TinyTranslationsBukkit.application(this);
             translations.setMessageStorage(new YamlMessageStorage(new File(getDataFolder(), "/lang/")));
@@ -212,6 +213,7 @@ public class ArchGPT extends JavaPlugin {
             // Close translations framework
             translations.close();
         }
+        audiences.close();
 
         // Unregister events
         HandlerList.unregisterAll();
