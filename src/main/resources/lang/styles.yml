@@ -1,7 +1,9 @@
-# How to render npc names in conversations
+# How to render npc names and text in conversations
 npc_name: <#37b5fc>{slot}</#37b5fc>
-# How to render player names in conversations
+npc_text: <gray>{slot}</gray>
+# How to render player names and text in conversations
 player_name: <green>{slot}</green>
+player_text: <white>{slot}</white>
 
 # wraps all warnings
 # override default one that has exclamation mark in the beginning

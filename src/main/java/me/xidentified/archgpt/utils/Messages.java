@@ -23,12 +23,12 @@ public class Messages {
             .withPlaceholder("size")
             .build();
     public static final Message GENERAL_PLAYER_MESSAGE = new MessageBuilder("general.player_message")
-            .withDefault("<player_name>You</player_name>: <text_l>{message}")
+            .withDefault("<player_name>You</player_name>: <player_text>{message}</player_text>")
             .withPlaceholder("player")
             .withPlaceholder("message")
             .build();
     public static final Message GENERAL_NPC_MESSAGE = new MessageBuilder("general.npc_message")
-            .withDefault("<npc_name>{npc:name}:</npc_name> <hover:show_text:'<red>Click to report'><click:run_command:'/reportnpcmessage'><text>{message}</text></click></hover>")
+            .withDefault("<npc_name>{npc:name}:</npc_name> <hover:show_text:'<red>Click to report'><click:run_command:'/reportnpcmessage'><npc_text>{message}</npc_text></click></hover>")
             .withPlaceholder("npc")
             .withPlaceholder("message")
             .build();
