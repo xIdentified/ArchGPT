@@ -82,14 +82,14 @@ public class Messages {
             .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt setnpc <arg>npcname</arg> <arg>prompt</arg></cmd_syntax>")
             .build();
     public static final Message RESETMEMORY_CMD_USAGE = new MessageBuilder("archgpt.resetnpc-usage")
-            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt resetnpcmemory <arg>npcName</arg></cmd_syntax>")
+            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt reset-npc-memory <arg>npcName</arg></cmd_syntax>")
             .build();
 
     public static final Message RELOAD_SUCCESS = new MessageBuilder("archgpt.reload")
             .withDefault("<prefix>ArchGPT successfully reloaded!")
             .build();
     public static final Message DEBUG_MODE = new MessageBuilder("archgpt.debugmode")
-            .withDefault("<prefix_warning>Debug mode is now {toggle ? enabled : disabled}")
+            .withDefault("<prefix_warning>Debug mode is now {toggle ? 'enabled' : 'disabled'}")
             .withPlaceholder("toggle")
             .build();
     public static final Message VERSION_INFO = new MessageBuilder("archgpt.version")

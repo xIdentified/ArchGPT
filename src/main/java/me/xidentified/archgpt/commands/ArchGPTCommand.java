@@ -41,6 +41,7 @@ public class ArchGPTCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "reload":
                 plugin.reloadConfig();
+                plugin.loadLanguages();
                 // TODO: Unregister and register listeners
                 plugin.sendMessage(sender, Messages.RELOAD_SUCCESS);
                 break;
