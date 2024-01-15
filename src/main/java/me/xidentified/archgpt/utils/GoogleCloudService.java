@@ -68,7 +68,6 @@ public class GoogleCloudService {
                 .collect(Collectors.toList());
     }
 
-
     // Methods below related to NPC emotional responses
     public Sentiment analyzePlayerMessageSentiment(String message) {
         try {

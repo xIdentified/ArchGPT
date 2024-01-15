@@ -28,6 +28,7 @@ public class NPCConversationManager {
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     public final ConcurrentHashMap<UUID, List<JsonObject>> npcChatStatesCache;
     private final ConcurrentHashMap<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
+    private final GoogleCloudService cloudService;
 
     public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -37,6 +38,7 @@ public class NPCConversationManager {
         this.playerCooldowns = new ConcurrentHashMap<>();
         this.conversationTimeoutManager = new ConversationTimeoutManager(plugin);
         this.conversationUtils = new ConversationUtils(plugin, configHandler, this);
+        this.cloudService = new GoogleCloudService(plugin.getLanguageServiceClient());
     }
 
     public JsonObject createSystemMessage(NPC npc, Player player) {
@@ -114,28 +116,25 @@ public class NPCConversationManager {
 
         // Update conversation state with all past NPC dialogue if Google NLP is disabled
         if (configHandler.isGoogleNlpEnabled()) {
-            addRelevantPastConversations(player, playerUUID, npcName); // New method for NLP-based filtering
+            addRelevantPastConversations(playerUUID, npcName);
         } else {
-            addPastConversations(playerUUID, npcName); // Existing method
+            addPastConversations(playerUUID, npcName);
         }
         conversationTimeoutManager.startConversationTimeout(playerUUID);
     }
 
     // Only add RELEVANT past messages if Google NLP is enabled
-    public void addRelevantPastConversations(Player player, UUID playerUUID, String npcName) {
+    public void addRelevantPastConversations(UUID playerUUID, String npcName) {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
-            List<Conversation> relevantConversations = googleCloudService.getRelevantPastConversations(player.getMessage(), pastConversations);
+
+            // Get the last message from the player
+            String lastMessage = plugin.getNpcEventListener().getLastMessage(playerUUID);
+
+            List<Conversation> relevantConversations = cloudService.getRelevantPastConversations(lastMessage, pastConversations);
 
             plugin.getServer().getScheduler().runTask(plugin, () -> {
-                List<JsonObject> updatedConversationState = new ArrayList<>();
-                for (Conversation conversation : relevantConversations) {
-                    // Similar processing as in addPastConversations
-                    // ...
-                }
-                List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
-                updatedConversationState.addAll(0, initialConversationState);
-                npcChatStatesCache.put(playerUUID, updatedConversationState);
+                conversationUtils.processConversations(playerUUID, relevantConversations);
             });
         });
     }
@@ -144,26 +143,9 @@ public class NPCConversationManager {
     public void addPastConversations(UUID playerUUID, String npcName) {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
+
             plugin.getServer().getScheduler().runTask(plugin, () -> {
-                List<JsonObject> updatedConversationState = new ArrayList<>();
-                for (Conversation pastConversation : pastConversations) {
-                    String timeContext = conversationUtils.getTimeContext(pastConversation.getTimestamp());
-                    List<String> relevantSentences = conversationUtils.filterShortSentences(pastConversation.getMessage(), ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
-
-                    if (!relevantSentences.isEmpty()) {
-                        String filteredMessage = String.join(" ", relevantSentences);
-                        String contextualMessage = String.format("%s, you spoke about: %s", timeContext, filteredMessage);
-
-                        JsonObject pastMessageJson = new JsonObject();
-                        pastMessageJson.addProperty("role", pastConversation.isFromNPC() ? "assistant" : "user");
-                        pastMessageJson.addProperty("content", contextualMessage);
-                        updatedConversationState.add(pastMessageJson);
-                    }
-                }
-
-                List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
-                updatedConversationState.addAll(0, initialConversationState);
-                npcChatStatesCache.put(playerUUID, updatedConversationState);
+                conversationUtils.processConversations(playerUUID, pastConversations);
             });
         });
     }

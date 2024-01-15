@@ -64,6 +64,28 @@ public class ConversationUtils {
         }
     }
 
+    public void processConversations(UUID playerUUID, List<Conversation> conversations) {
+        List<JsonObject> updatedConversationState = new ArrayList<>();
+        for (Conversation conversation : conversations) {
+            String timeContext = getTimeContext(conversation.getTimestamp());
+            List<String> relevantSentences = filterShortSentences(conversation.getMessage(), ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
+
+            if (!relevantSentences.isEmpty()) {
+                String filteredMessage = String.join(" ", relevantSentences);
+                String contextualMessage = String.format("%s, you spoke about: %s", timeContext, filteredMessage);
+
+                JsonObject pastMessageJson = new JsonObject();
+                pastMessageJson.addProperty("role", conversation.isFromNPC() ? "assistant" : "user");
+                pastMessageJson.addProperty("content", contextualMessage);
+                updatedConversationState.add(pastMessageJson);
+            }
+        }
+
+        List<JsonObject> initialConversationState = plugin.getConversationManager().npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
+        updatedConversationState.addAll(0, initialConversationState);
+        plugin.getConversationManager().npcChatStatesCache.put(playerUUID, updatedConversationState);
+    }
+
     public boolean isInLineOfSight(NPC npc, Player player) {
         if (!npc.isSpawned() || !npc.getEntity().getWorld().equals(player.getWorld())) {
             return false;

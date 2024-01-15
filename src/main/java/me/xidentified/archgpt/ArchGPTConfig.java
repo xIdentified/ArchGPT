@@ -38,6 +38,7 @@ public class ArchGPTConfig {
     private int maxResponseLength;
     private long chatCooldownMillis;
     private boolean shouldSplitLongMsg;
+    private boolean isGoogleNlpEnabled;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -61,6 +62,7 @@ public class ArchGPTConfig {
         String durationString = config.getString("npc_memory_duration", "7d");
         npcMemoryDuration = parseMinecraftDuration(durationString);
         shouldSplitLongMsg = config.getBoolean("split_long_messages", false);
+        isGoogleNlpEnabled = config.getBoolean("google_cloud.enabled", false);
 
         // Set the logger level based on debugMode
         Level loggerLevel = debugMode ? Level.INFO : Level.WARNING;

@@ -59,6 +59,7 @@ public class ArchGPT extends JavaPlugin {
     private ReportManager reportManager;
     private TranslationService translationService;
     private NPCConversationManager conversationManager;
+    private NPCEventListener npcEventListener;
     private LanguageServiceClient languageServiceClient; // for Google Cloud language
     private ConversationDAO conversationDAO;
     private BukkitAudiences audiences;
@@ -114,7 +115,8 @@ public class ArchGPT extends JavaPlugin {
 
             // Register the event listeners
             this.conversationManager = new NPCConversationManager(this, configHandler);
-            getServer().getPluginManager().registerEvents(new NPCEventListener(this, conversationManager, configHandler), this);
+            this.npcEventListener = new NPCEventListener(this, conversationManager, configHandler);
+            getServer().getPluginManager().registerEvents(npcEventListener, this);
             getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
 
             // Register commands
