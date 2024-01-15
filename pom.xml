@@ -45,6 +45,8 @@
                                     <include>com.zaxxer:HikariCP</include>
                                     <include>org.bstats</include>>
                                     <include>com.google.auth:*</include>
+                                    <include>com.google.api:*</include>
+                                    <include>com.google.cloud:*</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
