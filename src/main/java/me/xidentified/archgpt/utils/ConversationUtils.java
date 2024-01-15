@@ -1,13 +1,10 @@
 package me.xidentified.archgpt.utils;
 
-import com.google.cloud.language.v2.Sentiment;
-import com.google.gson.JsonObject;
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.ArchGPTConfig;
 import me.xidentified.archgpt.NPCConversationManager;
 import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
-import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
@@ -21,6 +18,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,6 +48,22 @@ public class ConversationUtils {
         String playerSpecificContext = playerContext.getFormattedContext("");
 
         return environmentalContext + " " + playerSpecificContext;
+    }
+
+    public String getTimeContext(long pastTimestamp) {
+        long currentTimestamp = Instant.now().toEpochMilli();
+        long timeDifferenceMillis = currentTimestamp - pastTimestamp;
+        long timeDifferenceInMinecraftDays = timeDifferenceMillis / (1200 * 1000);  // Convert milliseconds to Minecraft days
+
+        if (timeDifferenceInMinecraftDays < 1) {
+            return "Earlier today";
+        } else if (timeDifferenceInMinecraftDays < 7) {
+            return "A few days ago";
+        } else if (timeDifferenceInMinecraftDays < 30) {
+            return "Earlier this month";
+        } else {
+            return "Some time ago";
+        }
     }
 
     public boolean isInLineOfSight(NPC npc, Player player) {

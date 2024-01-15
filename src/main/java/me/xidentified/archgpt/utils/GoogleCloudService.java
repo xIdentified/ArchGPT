@@ -97,20 +97,4 @@ public class GoogleCloudService {
         return relevantDialogues.toString();
     }
 
-    private String getTimeContext(long pastTimestamp) {
-        long currentTimestamp = Instant.now().toEpochMilli();
-        long timeDifferenceMillis = currentTimestamp - pastTimestamp;
-        long timeDifferenceInMinecraftDays = timeDifferenceMillis / (1200 * 1000);  // Convert milliseconds to Minecraft days
-
-        if (timeDifferenceInMinecraftDays < 1) {
-            return "Earlier today";
-        } else if (timeDifferenceInMinecraftDays < 7) {
-            return "A few days ago";
-        } else if (timeDifferenceInMinecraftDays < 30) {
-            return "Earlier this month";
-        } else {
-            return "Some time ago";
-        }
-    }
-
 }

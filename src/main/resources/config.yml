@@ -1,4 +1,4 @@
-#Made by xIdentified
+# Made by xIdentified - https://discord.gg/emDFbsKNV4
 debug_mode: false
 
 api_key: "YOUR_OPENAI_API_KEY"
@@ -13,15 +13,16 @@ min_char_length: 10
 # Cooldown duration in milliseconds (e.g., 3000 milliseconds = 3 seconds)
 chat_cooldown: 3000
 
-# The default prompt your ChatGPT responses will be based off of. What's set here should apply to all NPCs.
-# Useful for setting base rules like, "don't stray off-topic" or "you are an NPC in Minecraft"
-default_prompt: "You are an NPC in Minecraft: "
+# The default prompt your ChatGPT responses will be based off of. What's set here will apply to all NPCs.
+# Useful for setting context like, "this server has custom enchantments" or "you can claim land by xyz"
+# Be mindful of how long this is, as it will be sent to the API each time.
+default_prompt: "You live in a server called CarrotCraft. You like to eat carrots. Mmm, carrots."
 
 # Replace 'npc_name' with the name of the NPC (as used in Citizens) and place your prompt in quotes.
 npcs:
   npc_name: "This is an example prompt for the NPC."
 
-# Gives your NPCs more accurate context to their location in the world, I recommend at least adding spawn
+# Gives your NPCs more accurate context to their location in the world, I recommend at least adding spawn.
 points_of_interest:
   world:
     Spawn: "0,64,0"

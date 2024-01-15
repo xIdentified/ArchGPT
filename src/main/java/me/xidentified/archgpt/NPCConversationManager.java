@@ -127,14 +127,21 @@ public class NPCConversationManager {
             List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 List<JsonObject> updatedConversationState = new ArrayList<>();
-                    // Convert past conversations to JsonObjects and add to updatedConversationState
-                    for (Conversation pastConversation : pastConversations) {
+                for (Conversation pastConversation : pastConversations) {
+                    String timeContext = conversationUtils.getTimeContext(pastConversation.getTimestamp());
+                    List<String> relevantSentences = conversationUtils.filterShortSentences(pastConversation.getMessage(), ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
+
+                    if (!relevantSentences.isEmpty()) {
+                        String filteredMessage = String.join(" ", relevantSentences);
+                        String contextualMessage = String.format("%s, you spoke about: %s", timeContext, filteredMessage);
+
                         JsonObject pastMessageJson = new JsonObject();
                         pastMessageJson.addProperty("role", pastConversation.isFromNPC() ? "assistant" : "user");
-                        pastMessageJson.addProperty("content", pastConversation.getMessage());
+                        pastMessageJson.addProperty("content", contextualMessage);
                         updatedConversationState.add(pastMessageJson);
                     }
-                // Add the initial conversation state, if any, at the beginning of the list
+                }
+
                 List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
                 updatedConversationState.addAll(0, initialConversationState);
                 npcChatStatesCache.put(playerUUID, updatedConversationState);
