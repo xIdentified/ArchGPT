@@ -1,5 +1,9 @@
 package me.xidentified.archgpt;
 
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.language.v2.LanguageServiceClient;
+import com.google.cloud.language.v2.LanguageServiceSettings;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
@@ -7,11 +11,16 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static net.citizensnpcs.api.CitizensAPI.getDataFolder;
 
 @Slf4j
 @Getter
@@ -94,6 +103,16 @@ public class ArchGPTConfig {
 
         // Return the combined prompt
         return combinedPrompt;
+    }
+
+    public LanguageServiceClient initializeGoogleCloud() throws IOException {
+        File jsonFile = new File(getDataFolder(), "storage/google-cloud-key.json");
+        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonFile));
+        LanguageServiceSettings settings = LanguageServiceSettings.newBuilder()
+                .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+                .build();
+
+        return LanguageServiceClient.create(settings);
     }
 
     // Get in game time from config string

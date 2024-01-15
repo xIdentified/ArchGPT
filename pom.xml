@@ -45,6 +45,9 @@
                                     <include>de.cubbossa:TinyTranslations-bukkit</include>
                                     <include>com.zaxxer:HikariCP</include>
                                     <include>org.bstats</include>>
+                                    <include>com.google.auth:*</include>
+                                    <include>com.google.api:*</include>
+                                    <include>com.google.cloud:*</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
@@ -97,18 +100,6 @@
         </repository>
     </repositories>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.google.cloud</groupId>
-                <artifactId>libraries-bom</artifactId>
-                <version>26.29.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <dependency>
             <groupId>io.papermc.paper</groupId>
@@ -126,16 +117,13 @@
             <artifactId>TinyTranslations-common</artifactId>
             <version>4.3.2</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5 -->
         <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.16.0</version>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>5.3</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.14</version>
-        </dependency>
+        <!-- https://ci.citizensnpcs.co/job/Citizens2/ -->
         <dependency>
             <groupId>net.citizensnpcs</groupId>
             <artifactId>citizens-main</artifactId>
@@ -149,38 +137,45 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.26</version>
+            <version>1.18.30</version>
             <scope>provided</scope>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <version>5.0.1</version>
+            <version>5.1.0</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/net.kyori/adventure-api -->
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-api</artifactId>
-            <version>4.14.0</version>
+            <version>4.15.0</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/net.kyori/adventure-platform-bukkit -->
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-platform-bukkit</artifactId>
-            <version>4.3.1</version>
+            <version>4.3.2</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/net.kyori/adventure-text-minimessage -->
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-text-minimessage</artifactId>
-            <version>4.14.0</version>
+            <version>4.15.0</version>
         </dependency>
+        <!-- https://github.com/PlaceholderAPI/PlaceholderAPI/wiki/Hook-into-PlaceholderAPI -->
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
             <version>2.11.5</version>
             <scope>provided</scope>
         </dependency>
+        <!-- https://gitlab.com/phoenix-dvpmt/mythiclib -->
         <dependency>
             <groupId>io.lumine</groupId>
             <artifactId>MythicLib-dist</artifactId>
@@ -188,15 +183,24 @@
             <scope>provided</scope>
             <optional>true</optional>
         </dependency>
+        <!-- https://gitlab.com/phoenix-dvpmt/mmocore -->
         <dependency>
             <groupId>net.Indyuce</groupId>
             <artifactId>MMOCore-API</artifactId>
             <version>1.12.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+        <!-- https://central.sonatype.com/artifact/com.google.cloud/google-cloud-language -->
         <dependency>
             <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-storage</artifactId>
+            <artifactId>google-cloud-language</artifactId>
+            <version>2.34.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.api/gax -->
+        <dependency>
+            <groupId>com.google.api</groupId>
+            <artifactId>gax</artifactId>
+            <version>2.39.0</version>
         </dependency>
     </dependencies>
 </project>

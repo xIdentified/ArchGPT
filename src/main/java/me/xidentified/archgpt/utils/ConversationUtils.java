@@ -18,11 +18,9 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,6 +48,22 @@ public class ConversationUtils {
         String playerSpecificContext = playerContext.getFormattedContext("");
 
         return environmentalContext + " " + playerSpecificContext;
+    }
+
+    public String getTimeContext(long pastTimestamp) {
+        long currentTimestamp = Instant.now().toEpochMilli();
+        long timeDifferenceMillis = currentTimestamp - pastTimestamp;
+        long timeDifferenceInMinecraftDays = timeDifferenceMillis / (1200 * 1000);  // Convert milliseconds to Minecraft days
+
+        if (timeDifferenceInMinecraftDays < 1) {
+            return "Earlier today";
+        } else if (timeDifferenceInMinecraftDays < 7) {
+            return "A few days ago";
+        } else if (timeDifferenceInMinecraftDays < 30) {
+            return "Earlier this month";
+        } else {
+            return "Some time ago";
+        }
     }
 
     public boolean isInLineOfSight(NPC npc, Player player) {

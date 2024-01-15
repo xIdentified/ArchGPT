@@ -1,5 +1,6 @@
 package me.xidentified.archgpt;
 
+import com.google.cloud.language.v2.*;
 import de.cubbossa.tinytranslations.TinyTranslations;
 import de.cubbossa.tinytranslations.TinyTranslationsBukkit;
 import de.cubbossa.tinytranslations.Translator;
@@ -58,7 +59,8 @@ public class ArchGPT extends JavaPlugin {
     private HologramManager hologramManager;
     private ReportManager reportManager;
     private TranslationService translationService;
-    private NPCConversationManager manager;
+    private NPCConversationManager conversationManager;
+    private LanguageServiceClient languageServiceClient; // for Google Cloud language
     private ConversationDAO conversationDAO;
     Translator translations;
 
@@ -110,8 +112,8 @@ public class ArchGPT extends JavaPlugin {
             this.translationService = new TranslationService(libreTranslateAPIEndpoint, this.getLogger());
 
             // Register the event listeners
-            this.manager = new NPCConversationManager(this, configHandler);
-            getServer().getPluginManager().registerEvents(new NPCEventListener(this, manager, configHandler), this);
+            this.conversationManager = new NPCConversationManager(this, configHandler);
+            getServer().getPluginManager().registerEvents(new NPCEventListener(this, conversationManager, configHandler), this);
             getServer().getPluginManager().registerEvents(new ReportGUI(this), this);
 
             // Register commands
@@ -147,6 +149,16 @@ public class ArchGPT extends JavaPlugin {
             if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
                 new Placeholders(this).register();
                 debugLog("PlaceholderAPI expansion enabled!");
+            }
+
+            // Check if Google Cloud NLP is enabled in the configuration
+            if (getConfig().getBoolean("google_cloud.enabled", false)) {
+                try {
+                    this.languageServiceClient = configHandler.initializeGoogleCloud();
+                    getLogger().info("Google Cloud LanguageServiceClient initialized successfully.");
+                } catch (IOException e) {
+                    getLogger().severe("Failed to initialize Google Cloud LanguageServiceClient: " + e.getMessage());
+                }
             }
 
             // Register bStats

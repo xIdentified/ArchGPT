@@ -28,7 +28,7 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
             return true;
         }
 
-        if (!plugin.getManager().playerInConversation(player.getUniqueId())) {
+        if (!plugin.getConversationManager().playerInConversation(player.getUniqueId())) {
             plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
             return true;
         }
