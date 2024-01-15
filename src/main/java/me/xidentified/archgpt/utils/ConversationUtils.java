@@ -1,10 +1,12 @@
 package me.xidentified.archgpt.utils;
 
+import com.google.gson.JsonObject;
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.ArchGPTConfig;
 import me.xidentified.archgpt.NPCConversationManager;
 import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
+import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;

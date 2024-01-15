@@ -3,10 +3,7 @@ package me.xidentified.archgpt;
 import com.google.gson.JsonArray;
 import lombok.Getter;
 import me.xidentified.archgpt.storage.model.Conversation;
-import me.xidentified.archgpt.utils.ArchGPTConstants;
-import me.xidentified.archgpt.utils.ConversationTimeoutManager;
-import me.xidentified.archgpt.utils.ConversationUtils;
-import me.xidentified.archgpt.utils.Messages;
+import me.xidentified.archgpt.utils.*;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import com.google.gson.JsonObject;
@@ -115,11 +112,35 @@ public class NPCConversationManager {
                 .insertObject("npc", npc)
                 .insertString("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase"))));
 
-        // Update conversation state with past conversations
-        addPastConversations(playerUUID, npcName);
+        // Update conversation state with all past NPC dialogue if Google NLP is disabled
+        if (configHandler.isGoogleNlpEnabled()) {
+            addRelevantPastConversations(player, playerUUID, npcName); // New method for NLP-based filtering
+        } else {
+            addPastConversations(playerUUID, npcName); // Existing method
+        }
         conversationTimeoutManager.startConversationTimeout(playerUUID);
     }
 
+    // Only add RELEVANT past messages if Google NLP is enabled
+    public void addRelevantPastConversations(Player player, UUID playerUUID, String npcName) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
+            List<Conversation> relevantConversations = googleCloudService.getRelevantPastConversations(player.getMessage(), pastConversations);
+
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                List<JsonObject> updatedConversationState = new ArrayList<>();
+                for (Conversation conversation : relevantConversations) {
+                    // Similar processing as in addPastConversations
+                    // ...
+                }
+                List<JsonObject> initialConversationState = npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
+                updatedConversationState.addAll(0, initialConversationState);
+                npcChatStatesCache.put(playerUUID, updatedConversationState);
+            });
+        });
+    }
+
+    // Otherwise, add ALL past NPC messages to reference previous conversations
     public void addPastConversations(UUID playerUUID, String npcName) {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());

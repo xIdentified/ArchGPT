@@ -165,6 +165,7 @@ public class ArchGPTConfig {
                         + RESET + DARK_BLUE + "--- Settings ---\n" + RESET +
                         YELLOW + "Debug Mode: " + debugMode + "\n" + YELLOW +
                         "ChatGPT Engine: " + chatGptEngine + "\n" + YELLOW +
+                        "Max Response Length: " + maxResponseLength + "\n" + YELLOW +
                         "Max API Calls Per Second: " + maxApiCallsPerSecond + "\n" + YELLOW +
                         "Base Prompt: " + defaultPrompt + "\n" + YELLOW +
                         "NPC Memory Duration: " + plugin.getConfig().getString("npc_memory_duration") + "\n" + YELLOW +
