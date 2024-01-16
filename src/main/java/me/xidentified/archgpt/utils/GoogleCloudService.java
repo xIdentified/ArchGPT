@@ -117,28 +117,6 @@ public class GoogleCloudService {
     }
 
     // Methods below related to NPC emotional responses
-    public String tailorNpcResponse(Component playerMessage, List<Conversation> pastConversations) {
-        String relevantPastConversations = "";
-
-        // Check if the player is asking about a past conversation
-        if (isAskingAboutPastConversation(playerMessage)) {
-            List<Conversation> relevantConversations = getRelevantPastConversations(playerMessage, pastConversations);
-            relevantPastConversations = relevantConversations.stream()
-                    .map(Conversation::getMessage)
-                    .collect(Collectors.joining(" "));
-        }
-
-        // Analyze sentiment of the player's message
-        try {
-            // Ensure analyzePlayerMessageSentiment can handle a Component or convert it to a String
-            JsonObject sentiment = analyzePlayerMessageSentiment(PlainTextComponentSerializer.plainText().serialize(playerMessage));
-            String npcTone = determineNpcTone(sentiment);
-            return String.format("Respond %s. %s", npcTone, relevantPastConversations);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public JsonObject analyzePlayerMessageSentiment(String message) throws IOException {
         String response = postRequest("https://language.googleapis.com/v1/documents:analyzeSentiment", createJsonPayload(message));
         return new Gson().fromJson(response, JsonObject.class).getAsJsonObject("documentSentiment");
