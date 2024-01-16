@@ -13,7 +13,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,9 +28,8 @@ public class NPCConversationManager {
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     public final ConcurrentHashMap<UUID, List<JsonObject>> npcChatStatesCache;
     private final ConcurrentHashMap<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
-    private final GoogleCloudService cloudService;
 
-    public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) throws IOException {
+    public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
         this.configHandler = configHandler;
         this.chatRequestHandler = new ChatRequestHandler(plugin);
@@ -39,7 +37,6 @@ public class NPCConversationManager {
         this.playerCooldowns = new ConcurrentHashMap<>();
         this.conversationTimeoutManager = new ConversationTimeoutManager(plugin);
         this.conversationUtils = new ConversationUtils(plugin, configHandler, this);
-        this.cloudService = new GoogleCloudService(configHandler.getGoogleCloudApiKey());
     }
 
     public JsonObject createSystemMessage(NPC npc, Player player) {
@@ -97,7 +94,6 @@ public class NPCConversationManager {
 
     public void startConversation(Player player, NPC npc) {
         UUID playerUUID = player.getUniqueId();
-        String npcName = npc.getName();
 
         // Store conversation state
         playerNPCMap.put(playerUUID, npc);
@@ -115,41 +111,9 @@ public class NPCConversationManager {
                 .insertObject("npc", npc)
                 .insertString("cancel", Objects.requireNonNull(plugin.getConfig().getString("conversation_end_phrase"))));
 
-        // Update conversation state with all past NPC dialogue if Google NLP is disabled
-        if (configHandler.isGoogleNlpEnabled()) {
-            addRelevantPastConversations(playerUUID, npcName);
-        } else {
-            addPastConversations(playerUUID, npcName);
-        }
         conversationTimeoutManager.startConversationTimeout(playerUUID);
     }
 
-    // Only add RELEVANT past messages if Google NLP is enabled
-    public void addRelevantPastConversations(UUID playerUUID, String npcName) {
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
-
-            // Get the last message from the player
-            String lastMessage = plugin.getNpcEventListener().getLastMessage(playerUUID);
-
-            List<Conversation> relevantConversations = cloudService.getRelevantPastConversations(lastMessage, pastConversations);
-
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                conversationUtils.processConversations(playerUUID, relevantConversations);
-            });
-        });
-    }
-
-    // Otherwise, add ALL past NPC messages to reference previous conversations
-    public void addPastConversations(UUID playerUUID, String npcName) {
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, configHandler.getNpcMemoryDuration());
-
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                conversationUtils.processConversations(playerUUID, pastConversations);
-            });
-        });
-    }
 
     public void endConversation(UUID playerUUID) {
         plugin.debugLog("Conversation ended for player " + playerUUID);
@@ -177,6 +141,7 @@ public class NPCConversationManager {
 
     public void processPlayerMessage(Player player, Component playerMessage, HologramManager hologramManager) {
         UUID playerUUID = player.getUniqueId();
+        NPC npc = playerNPCMap.get(playerUUID);
 
         if (PlainTextComponentSerializer.plainText().serialize(playerMessage).length() < configHandler.getMinCharLength()) {
             plugin.sendMessage(player, Messages.MSG_TOO_SHORT.insertNumber("size", configHandler.getMinCharLength()));
@@ -190,7 +155,6 @@ public class NPCConversationManager {
         new BukkitRunnable() {
             @Override
             public void run() {
-                NPC npc = playerNPCMap.get(playerUUID);
                 if (npc == null) return;
                 if (npc.isSpawned()) {
                     hologramManager.removePlayerHologram(playerUUID);
@@ -215,7 +179,25 @@ public class NPCConversationManager {
 
         // Process chat request
         List<JsonObject> conversationState = npcChatStatesCache.get(playerUUID);
+        GoogleCloudService googleCloudService = new GoogleCloudService(configHandler.getGoogleCloudApiKey());
 
+        // Check if the player is asking about past conversations
+        if (googleCloudService.isAskingAboutPastConversation(playerMessage)) {
+            plugin.getLogger().warning("Player is asking about past conversations.");
+
+            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npc.getName(), configHandler.getNpcMemoryDuration());
+            List<Conversation> relevantConversations = googleCloudService.getRelevantPastConversations(playerMessage, pastConversations);
+
+            plugin.getLogger().warning("Number of relevant past messages found: " + relevantConversations.size());
+
+            // Add relevant past conversation messages to 'conversationState'
+            for (Conversation conversation : relevantConversations) {
+                JsonObject pastMessageJson = new JsonObject();
+                pastMessageJson.addProperty("role", conversation.isFromNPC() ? "assistant" : "user");
+                pastMessageJson.addProperty("content", conversation.getMessage());
+                conversationState.add(0, pastMessageJson); // Add at the beginning of the list
+            }
+        }
         // Prepare the request payload as a JsonObject
         JsonObject jsonRequest = new JsonObject();
         JsonArray messages = new JsonArray();
@@ -258,7 +240,6 @@ public class NPCConversationManager {
                                 npcChatStatesCache.put(playerUUID, updatedConversationState);
                             }
 
-                            NPC npc = playerNPCMap.get(playerUUID);
                             new BukkitRunnable() {
                                 @Override
                                 public void run() {

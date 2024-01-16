@@ -5,6 +5,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import me.xidentified.archgpt.storage.model.Conversation;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -12,13 +14,17 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class GoogleCloudService {
     private final String apiKey;
+    private final Pattern inquiryPattern;
 
     public GoogleCloudService(String apiKey) {
         this.apiKey = apiKey;
+        String inquiryKeywords = "earlier|before|previously|past|you said|you say";
+        inquiryPattern = Pattern.compile("\\b(" + inquiryKeywords + ")\\b", Pattern.CASE_INSENSITIVE);
     }
 
     public List<JsonObject> analyzePlayerMessageEntities(String message) throws IOException {
@@ -72,42 +78,60 @@ public class GoogleCloudService {
         return new Gson().toJson(json);
     }
 
-    public boolean isConversationRelatedToPast(String playerMessage, List<Conversation> pastConversations) {
-        // Split the player's message into words
-        Set<String> playerMessageWords = new HashSet<>(Arrays.asList(playerMessage.toLowerCase().split("\\s+")));
+    public boolean isAskingAboutPastConversation(Component playerMessage) {
+        String normalizedMessage = PlainTextComponentSerializer.plainText().serialize(playerMessage).toLowerCase();
+        return inquiryPattern.matcher(normalizedMessage).find();
+    }
 
-        // Iterate through past conversations to find any related ones
+    public boolean isConversationRelatedToPast(Component playerMessageComponent, List<Conversation> pastConversations) {
+        // Serialize the Component to a plain text string
+        String playerMessage = PlainTextComponentSerializer.plainText().serialize(playerMessageComponent).toLowerCase();
+
+        // Split the player's message into words
+        Set<String> playerMessageWords = new HashSet<>(Arrays.asList(playerMessage.split("\\s+")));
+
+        // Common words that are not significant for conversation matching
+        Set<String> commonWords = new HashSet<>(Arrays.asList("the", "and", "you", "i", "a", "to", "it", "is", "are", "was", "on", "of"));
+
         for (Conversation pastConversation : pastConversations) {
             Set<String> pastMessageWords = new HashSet<>(Arrays.asList(pastConversation.getMessage().toLowerCase().split("\\s+")));
-            pastMessageWords.retainAll(playerMessageWords); // Intersection of words
 
-            if (!pastMessageWords.isEmpty()) {
-                // If there are common words between the player's message and past message
+            // Remove common words
+            pastMessageWords.removeAll(commonWords);
+            playerMessageWords.removeAll(commonWords);
+
+            pastMessageWords.retainAll(playerMessageWords);
+
+            // Check if there are enough common words (more than 2)
+            if (pastMessageWords.size() > 2) {
                 return true;
             }
         }
         return false;
     }
 
-    public List<Conversation> getRelevantPastConversations(String playerMessage, List<Conversation> pastConversations) {
+    public List<Conversation> getRelevantPastConversations(Component playerMessage, List<Conversation> pastConversations) {
         return pastConversations.stream()
                 .filter(pastConversation -> isConversationRelatedToPast(playerMessage, pastConversations))
                 .collect(Collectors.toList());
     }
 
     // Methods below related to NPC emotional responses
-    public String tailorNpcResponse(String playerMessage, List<Conversation> pastConversations) {
-        // Filter relevant past conversations
-        List<Conversation> relevantConversations = getRelevantPastConversations(playerMessage, pastConversations);
+    public String tailorNpcResponse(Component playerMessage, List<Conversation> pastConversations) {
+        String relevantPastConversations = "";
 
-        // Extract and concatenate the content of relevant conversations
-        String relevantPastConversations = relevantConversations.stream()
-                .map(Conversation::getMessage)
-                .collect(Collectors.joining(" "));
+        // Check if the player is asking about a past conversation
+        if (isAskingAboutPastConversation(playerMessage)) {
+            List<Conversation> relevantConversations = getRelevantPastConversations(playerMessage, pastConversations);
+            relevantPastConversations = relevantConversations.stream()
+                    .map(Conversation::getMessage)
+                    .collect(Collectors.joining(" "));
+        }
 
         // Analyze sentiment of the player's message
         try {
-            JsonObject sentiment = analyzePlayerMessageSentiment(playerMessage);
+            // Ensure analyzePlayerMessageSentiment can handle a Component or convert it to a String
+            JsonObject sentiment = analyzePlayerMessageSentiment(PlainTextComponentSerializer.plainText().serialize(playerMessage));
             String npcTone = determineNpcTone(sentiment);
             return String.format("Respond %s. %s", npcTone, relevantPastConversations);
         } catch (IOException e) {
@@ -120,20 +144,24 @@ public class GoogleCloudService {
         return new Gson().fromJson(response, JsonObject.class).getAsJsonObject("documentSentiment");
     }
 
-
     private String determineNpcTone(JsonObject sentiment) {
         double score = sentiment.get("score").getAsDouble();
         double magnitude = sentiment.get("magnitude").getAsDouble();
 
-        if (score > 0.5) {
-            return magnitude > 0.5 ? "in an enthusiastic and positive manner" : "in a cheerful and positive manner";
-        } else if (score < -0.5) {
-            return magnitude > 0.5 ? "with strong concern or skepticism" : "with mild concern or curiosity";
+        // Examples of more nuanced tone determination
+        if (score > 0.7) {
+            return "in a highly enthusiastic and uplifting manner";
+        } else if (score > 0.3) {
+            return "in a friendly and positive manner";
+        } else if (score < -0.7) {
+            return "with deep concern or strong skepticism";
+        } else if (score < -0.3) {
+            return "with a hint of concern or mild skepticism";
         } else {
             if (magnitude > 0.5) {
-                return "in a somewhat emotional but controlled manner";
+                return "in a reflective but neutral tone";
             } else {
-                return "in a neutral tone";
+                return "in a calm and balanced tone";
             }
         }
     }
