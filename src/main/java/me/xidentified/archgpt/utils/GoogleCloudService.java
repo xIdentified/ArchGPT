@@ -1,11 +1,9 @@
 package me.xidentified.archgpt.utils;
 
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.storage.model.Conversation;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,15 +17,8 @@ import java.util.stream.Collectors;
 public class GoogleCloudService {
     private final String apiKey;
 
-    public GoogleCloudService(ArchGPT plugin) throws IOException {
-        // Define the path to the service account key JSON file
-        String jsonPath = new File(plugin.getDataFolder(), "storage/google-cloud-key.json").getAbsolutePath();
-
-        // Load the service account key JSON file
-        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
-                .createScoped(Arrays.asList("https://www.googleapis.com/auth/cloud-platform"));
-        credentials.refreshIfExpired();
-        this.apiKey = credentials.getAccessToken().getTokenValue();
+    public GoogleCloudService(String apiKey) {
+        this.apiKey = apiKey;
     }
 
     public List<JsonObject> analyzePlayerMessageEntities(String message) throws IOException {

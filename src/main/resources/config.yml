@@ -47,7 +47,8 @@ npc_memory_duration: 7d
 # by determining the tone of the messages. Highly recommended!
 # IMPORTANT: You need to set up the google-cloud-key.json in the storage folder!
 google_cloud:
-  enabled: false
+  enabled: true
+  api_key: 'YOUR_GOOGLE_CLOUD_API_KEY'
 
 storage:
   type: 'sqlite' # Options: sqlite, mysql

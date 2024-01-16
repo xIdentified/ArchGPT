@@ -1,7 +1,5 @@
 package me.xidentified.archgpt;
 
-import com.google.api.services.language.v1beta2.CloudNaturalLanguageScopes;
-import com.google.auth.oauth2.GoogleCredentials;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
@@ -9,11 +7,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -25,7 +19,6 @@ public class ArchGPTConfig {
     private final Logger logger;
     private final JavaPlugin plugin;
     private boolean debugMode;
-    private String accessToken;
     private double maxApiCallsPerSecond;
     private long npcChatTimeoutMillis;
     private String defaultPrompt;
@@ -37,7 +30,6 @@ public class ArchGPTConfig {
     private long chatCooldownMillis;
     private boolean shouldSplitLongMsg;
     private boolean isGoogleNlpEnabled;
-    public boolean googleCloudConfiguredProperly;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -73,21 +65,13 @@ public class ArchGPTConfig {
             throw new IllegalStateException("OpenAI API key is missing or invalid.");
         }
 
-        if (isGoogleNlpEnabled) {
-            File jsonFile = new File(plugin.getDataFolder(), "storage/google-cloud-key.json");
-            if (!jsonFile.exists()) {
-                logger.warning("Google Cloud is enabled, but the JSON key file is missing.");
-            } else {
-                try {
-                    GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonFile.getAbsolutePath()))
-                            .createScoped(Arrays.asList("https://www.googleapis.com/auth/cloud-platform"));
-                    credentials.refreshIfExpired();
-                    this.accessToken = credentials.getAccessToken().getTokenValue();
-                    googleCloudConfiguredProperly = true;
-                } catch (IOException e) {
-                    logger.severe("Failed to initialize Google Cloud credentials: " + e.getMessage());
-                }
+        if (plugin.getConfig().getBoolean("google_cloud.enabled", false)) {
+            this.apiKey = plugin.getConfig().getString("google_cloud.api_key", "");
+            if (apiKey.isEmpty() || apiKey.equals("YOUR_GOOGLE_CLOUD_API_KEY")) {
+                logger.severe("Google Cloud API key is not set in the config.yml. Plugin will not function properly without it!");
             }
+        } else {
+            this.apiKey = null;
         }
     }
 
@@ -120,15 +104,6 @@ public class ArchGPTConfig {
 
         // Return the combined prompt
         return combinedPrompt;
-    }
-
-    public GoogleCredentials initializeGoogleCloudCredentials() throws IOException {
-        // Define the path to the service account key JSON file
-        String jsonPath = plugin.getDataFolder().getAbsolutePath() + File.separator + "storage" + File.separator + "google-cloud-key.json";
-
-        // Load the service account key JSON file
-        return GoogleCredentials.fromStream(new FileInputStream(jsonPath))
-                .createScoped(CloudNaturalLanguageScopes.all());
     }
 
     // Get in game time from config string

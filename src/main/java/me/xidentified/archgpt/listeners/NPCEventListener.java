@@ -184,15 +184,6 @@ public class NPCEventListener implements Listener {
     }
 
     @EventHandler
-    public void onPlayerLogin(PlayerLoginEvent event) {
-        Player player = event.getPlayer();
-        if (player.hasPermission("archgpt.admin") && configHandler.isGoogleNlpEnabled() && !configHandler.googleCloudConfiguredProperly) {
-            plugin.sendMessage(event.getPlayer(), Messages.CLOUD_NOT_CONFIGURED);
-        }
-    }
-
-
-    @EventHandler
     public void onPlayerLeave(PlayerQuitEvent event) {
         UUID playerUUID = event.getPlayer().getUniqueId();
         npcsProcessingGreeting.remove(playerUUID);
