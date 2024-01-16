@@ -1,48 +1,84 @@
 package me.xidentified.archgpt.utils;
 
-import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
-
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.services.language.v1beta2.CloudNaturalLanguage;
-import com.google.api.services.language.v1beta2.CloudNaturalLanguageScopes;
-import com.google.api.services.language.v1beta2.model.*;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.storage.model.Conversation;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
+import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class GoogleCloudService {
-    private final CloudNaturalLanguage languageService;
+    private final String apiKey;
 
     public GoogleCloudService(ArchGPT plugin) throws IOException {
-        HttpTransport httpTransport = new NetHttpTransport();
-        JsonFactory jsonFactory = new GsonFactory();
-
         // Define the path to the service account key JSON file
         String jsonPath = new File(plugin.getDataFolder(), "storage/google-cloud-key.json").getAbsolutePath();
 
         // Load the service account key JSON file
         GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
-                .createScoped(CloudNaturalLanguageScopes.all());
-
-        this.languageService = new CloudNaturalLanguage.Builder(httpTransport, jsonFactory, new HttpCredentialsAdapter(credentials))
-                .build();
+                .createScoped(Arrays.asList("https://www.googleapis.com/auth/cloud-platform"));
+        credentials.refreshIfExpired();
+        this.apiKey = credentials.getAccessToken().getTokenValue();
     }
 
-    // Below methods are related to NPC memory - sending only relevant previous context to the current API response
-    public List<Entity> analyzePlayerMessageEntities(String message) throws IOException {
-        AnalyzeEntitiesRequest request = new AnalyzeEntitiesRequest()
-                .setDocument(new Document().setContent(message).setType("PLAIN_TEXT"));
-        AnalyzeEntitiesResponse response = languageService.documents().analyzeEntities(request).execute();
-        return response.getEntities();
+    public List<JsonObject> analyzePlayerMessageEntities(String message) throws IOException {
+        String response = postRequest("https://language.googleapis.com/v1/documents:analyzeEntities", createJsonPayload(message));
+        JsonObject responseJson = new Gson().fromJson(response, JsonObject.class);
+        JsonArray entitiesArray = responseJson.getAsJsonObject("entities").getAsJsonArray();
+
+        List<JsonObject> entities = new ArrayList<>();
+        for (JsonElement element : entitiesArray) {
+            entities.add(element.getAsJsonObject());
+        }
+        return entities;
+    }
+
+    private String postRequest(String urlString, String jsonInputString) throws IOException {
+        HttpURLConnection connection = getHttpURLConnection(urlString, jsonInputString);
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder response = new StringBuilder();
+            String responseLine;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+            return response.toString();
+        }
+    }
+
+    @NotNull
+    private HttpURLConnection getHttpURLConnection(String urlString, String jsonInputString) throws IOException {
+        URL url = new URL(urlString + "?key=" + apiKey);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+        connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+        connection.setDoOutput(true);
+
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+        return connection;
+    }
+
+    private String createJsonPayload(String text) {
+        JsonObject document = new JsonObject();
+        document.addProperty("type", "PLAIN_TEXT");
+        document.addProperty("content", text);
+
+        JsonObject json = new JsonObject();
+        json.add("document", document);
+        return new Gson().toJson(json);
     }
 
     public boolean isConversationRelatedToPast(String playerMessage, List<Conversation> pastConversations) {
@@ -79,27 +115,24 @@ public class GoogleCloudService {
                 .collect(Collectors.joining(" "));
 
         // Analyze sentiment of the player's message
-        Sentiment sentiment = analyzePlayerMessageSentiment(playerMessage);
-        String npcTone = determineNpcTone(sentiment);
-
-        // Construct the tailored NPC prompt
-        return String.format("Respond %s. %s", npcTone, relevantPastConversations);
-    }
-
-    public Sentiment analyzePlayerMessageSentiment(String message) {
         try {
-            AnalyzeSentimentRequest request = new AnalyzeSentimentRequest()
-                    .setDocument(new Document().setContent(message).setType("PLAIN_TEXT"));
-            AnalyzeSentimentResponse response = languageService.documents().analyzeSentiment(request).execute();
-            return response.getDocumentSentiment();
+            JsonObject sentiment = analyzePlayerMessageSentiment(playerMessage);
+            String npcTone = determineNpcTone(sentiment);
+            return String.format("Respond %s. %s", npcTone, relevantPastConversations);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-        private String determineNpcTone(Sentiment sentiment) {
-        double score = sentiment.getScore();
-        double magnitude = sentiment.getMagnitude();
+    public JsonObject analyzePlayerMessageSentiment(String message) throws IOException {
+        String response = postRequest("https://language.googleapis.com/v1/documents:analyzeSentiment", createJsonPayload(message));
+        return new Gson().fromJson(response, JsonObject.class).getAsJsonObject("documentSentiment");
+    }
+
+
+    private String determineNpcTone(JsonObject sentiment) {
+        double score = sentiment.get("score").getAsDouble();
+        double magnitude = sentiment.get("magnitude").getAsDouble();
 
         if (score > 0.5) {
             return magnitude > 0.5 ? "in an enthusiastic and positive manner" : "in a cheerful and positive manner";

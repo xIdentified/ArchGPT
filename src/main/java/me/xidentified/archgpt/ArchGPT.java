@@ -152,17 +152,6 @@ public class ArchGPT extends JavaPlugin {
                 debugLog("PlaceholderAPI expansion enabled!");
             }
 
-            // Check if Google Cloud NLP is enabled in the configuration
-
-            if (getConfig().getBoolean("google_cloud.enabled", false)) {
-                try {
-                    this.languageServiceClient = configHandler.initializeGoogleCloud();
-                    getLogger().info("Google Cloud LanguageServiceClient initialized successfully.");
-                } catch (IOException e) {
-                    getLogger().severe("Failed to initialize Google Cloud LanguageServiceClient: " + e.getMessage());
-                }
-            }
-
             // Register bStats
             int pluginId = 20587;
             Metrics metrics = new Metrics(this, pluginId);

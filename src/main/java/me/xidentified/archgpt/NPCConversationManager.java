@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,7 +31,7 @@ public class NPCConversationManager {
     private final ConcurrentHashMap<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message
     private final GoogleCloudService cloudService;
 
-    public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
+    public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) throws IOException {
         this.plugin = plugin;
         this.configHandler = configHandler;
         this.chatRequestHandler = new ChatRequestHandler(plugin);
@@ -38,7 +39,7 @@ public class NPCConversationManager {
         this.playerCooldowns = new ConcurrentHashMap<>();
         this.conversationTimeoutManager = new ConversationTimeoutManager(plugin);
         this.conversationUtils = new ConversationUtils(plugin, configHandler, this);
-        this.cloudService = new GoogleCloudService(plugin.getLanguageServiceClient());
+        this.cloudService = new GoogleCloudService(plugin);
     }
 
     public JsonObject createSystemMessage(NPC npc, Player player) {

@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/ArchGPT.iml" filepath="$PROJECT_DIR$/ArchGPT.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ArchGPT (1).iml" filepath="$PROJECT_DIR$/ArchGPT (1).iml" />
     </modules>
   </component>
 </project>

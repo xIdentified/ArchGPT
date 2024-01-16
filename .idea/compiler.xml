@@ -7,10 +7,8 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="ArchGPT" />
+        <module name="ArchGPT (1)" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="ArchGPT (1)" target="16" />
-    </bytecodeTargetLevel>
   </component>
 </project>

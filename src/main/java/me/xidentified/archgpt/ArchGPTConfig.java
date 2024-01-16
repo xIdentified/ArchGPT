@@ -1,5 +1,7 @@
 package me.xidentified.archgpt;
 
+import com.google.api.services.language.v1beta2.CloudNaturalLanguageScopes;
+import com.google.auth.oauth2.GoogleCredentials;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
@@ -11,6 +13,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -22,6 +25,7 @@ public class ArchGPTConfig {
     private final Logger logger;
     private final JavaPlugin plugin;
     private boolean debugMode;
+    private String accessToken;
     private double maxApiCallsPerSecond;
     private long npcChatTimeoutMillis;
     private String defaultPrompt;
@@ -73,9 +77,16 @@ public class ArchGPTConfig {
             File jsonFile = new File(plugin.getDataFolder(), "storage/google-cloud-key.json");
             if (!jsonFile.exists()) {
                 logger.warning("Google Cloud is enabled, but the JSON key file is missing.");
-                googleCloudConfiguredProperly = false;
             } else {
-                googleCloudConfiguredProperly = true;
+                try {
+                    GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonFile.getAbsolutePath()))
+                            .createScoped(Arrays.asList("https://www.googleapis.com/auth/cloud-platform"));
+                    credentials.refreshIfExpired();
+                    this.accessToken = credentials.getAccessToken().getTokenValue();
+                    googleCloudConfiguredProperly = true;
+                } catch (IOException e) {
+                    logger.severe("Failed to initialize Google Cloud credentials: " + e.getMessage());
+                }
             }
         }
     }
@@ -111,18 +122,13 @@ public class ArchGPTConfig {
         return combinedPrompt;
     }
 
-    public LanguageServiceClient initializeGoogleCloud() throws IOException {
-        // Path to the service account key JSON file
+    public GoogleCredentials initializeGoogleCloudCredentials() throws IOException {
+        // Define the path to the service account key JSON file
         String jsonPath = plugin.getDataFolder().getAbsolutePath() + File.separator + "storage" + File.separator + "google-cloud-key.json";
 
         // Load the service account key JSON file
-        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
-                .createScoped(LanguageServiceSettings.getDefaultServiceScopes());
-        LanguageServiceSettings settings = LanguageServiceSettings.newBuilder()
-                .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
-                .build();
-
-        return LanguageServiceClient.create(settings);
+        return GoogleCredentials.fromStream(new FileInputStream(jsonPath))
+                .createScoped(CloudNaturalLanguageScopes.all());
     }
 
     // Get in game time from config string
