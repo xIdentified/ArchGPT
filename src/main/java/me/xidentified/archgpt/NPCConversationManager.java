@@ -39,7 +39,7 @@ public class NPCConversationManager {
         this.playerCooldowns = new ConcurrentHashMap<>();
         this.conversationTimeoutManager = new ConversationTimeoutManager(plugin);
         this.conversationUtils = new ConversationUtils(plugin, configHandler, this);
-        this.cloudService = new GoogleCloudService(configHandler.getApiKey());
+        this.cloudService = new GoogleCloudService(configHandler.getGoogleCloudApiKey());
     }
 
     public JsonObject createSystemMessage(NPC npc, Player player) {

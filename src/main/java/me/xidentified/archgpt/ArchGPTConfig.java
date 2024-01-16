@@ -22,8 +22,9 @@ public class ArchGPTConfig {
     private double maxApiCallsPerSecond;
     private long npcChatTimeoutMillis;
     private String defaultPrompt;
-    private String apiKey;
     private String chatGptEngine;
+    private String openAiApiKey;
+    private String googleCloudApiKey;
     private Duration npcMemoryDuration;
     private int minCharLength;
     private int maxResponseLength;
@@ -58,21 +59,24 @@ public class ArchGPTConfig {
         Level loggerLevel = debugMode ? Level.INFO : Level.WARNING;
         logger.setLevel(loggerLevel);
 
-        // Check if the API key is set in the configuration
-        apiKey = config.getString("api_key", "YOUR_OPENAI_API_KEY");
-        if (apiKey.equals("YOUR_OPENAI_API_KEY")) {
+        // Check if the OpenAI API key is set in the configuration
+        this.openAiApiKey = config.getString("api_key", "YOUR_OPENAI_API_KEY");
+        if (this.openAiApiKey.equals("YOUR_OPENAI_API_KEY")) {
             logger.severe("OpenAI API key is not set in the config.yml. Plugin will not function properly without it!");
             throw new IllegalStateException("OpenAI API key is missing or invalid.");
         }
 
+        // Check if Google Cloud is enabled and if the API key is set
         if (plugin.getConfig().getBoolean("google_cloud.enabled", false)) {
-            this.apiKey = plugin.getConfig().getString("google_cloud.api_key", "");
-            if (apiKey.isEmpty() || apiKey.equals("YOUR_GOOGLE_CLOUD_API_KEY")) {
-                logger.severe("Google Cloud API key is not set in the config.yml. Plugin will not function properly without it!");
+            this.googleCloudApiKey = plugin.getConfig().getString("google_cloud.api_key", "YOUR_GOOGLE_CLOUD_API_KEY");
+            if (this.googleCloudApiKey.isEmpty() || this.googleCloudApiKey.equals("YOUR_GOOGLE_CLOUD_API_KEY")) {
+                logger.warning("Google Cloud is enabled, but the API key is not set or invalid. Enhanced features will not be available.");
+                this.googleCloudApiKey = null; // Google Cloud features won't be available
             }
         } else {
-            this.apiKey = null;
+            this.googleCloudApiKey = null; // Google Cloud is not enabled
         }
+
     }
 
     public void saveDefaultConfig() {

@@ -144,7 +144,7 @@ public class ChatRequestHandler {
 
     @NotNull
     private HttpPost getHttpPost() {
-        String apiKey = plugin.getConfigHandler().getApiKey();
+        String apiKey = plugin.getConfigHandler().getOpenAiApiKey();
         String chatGptEndpoint = "https://api.openai.com/v1/chat/completions";
         HttpPost httpPost = new HttpPost(chatGptEndpoint);
 
