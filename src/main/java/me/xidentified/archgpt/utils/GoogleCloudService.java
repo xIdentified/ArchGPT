@@ -1,15 +1,19 @@
 package me.xidentified.archgpt.utils;
 
+import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.GoogleCredentials;
+
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.language.v1beta2.CloudNaturalLanguage;
 import com.google.api.services.language.v1beta2.CloudNaturalLanguageScopes;
 import com.google.api.services.language.v1beta2.model.*;
+import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.storage.model.Conversation;
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
@@ -18,16 +22,18 @@ import java.util.stream.Collectors;
 public class GoogleCloudService {
     private final CloudNaturalLanguage languageService;
 
-    public GoogleCloudService() throws IOException {
+    public GoogleCloudService(ArchGPT plugin) throws IOException {
         HttpTransport httpTransport = new NetHttpTransport();
-        JsonFactory jsonFactory = new JacksonFactory();
+        JsonFactory jsonFactory = new GsonFactory();
+
+        // Define the path to the service account key JSON file
+        String jsonPath = new File(plugin.getDataFolder(), "storage/google-cloud-key.json").getAbsolutePath();
 
         // Load the service account key JSON file
-        GoogleCredential credential = GoogleCredential.fromStream(new FileInputStream(jsonPath))
+        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
                 .createScoped(CloudNaturalLanguageScopes.all());
 
-        this.languageService = new CloudNaturalLanguage(httpTransport, jsonFactory, credential)
-                .setApplicationName("ArchGPT")
+        this.languageService = new CloudNaturalLanguage.Builder(httpTransport, jsonFactory, new HttpCredentialsAdapter(credentials))
                 .build();
     }
 
@@ -80,14 +86,18 @@ public class GoogleCloudService {
         return String.format("Respond %s. %s", npcTone, relevantPastConversations);
     }
 
-    public Sentiment analyzePlayerMessageSentiment(String message) throws IOException {
-        AnalyzeSentimentRequest request = new AnalyzeSentimentRequest()
-                .setDocument(new Document().setContent(message).setType("PLAIN_TEXT"));
-        AnalyzeSentimentResponse response = languageService.documents().analyzeSentiment(request).execute();
-        return response.getDocumentSentiment();
+    public Sentiment analyzePlayerMessageSentiment(String message) {
+        try {
+            AnalyzeSentimentRequest request = new AnalyzeSentimentRequest()
+                    .setDocument(new Document().setContent(message).setType("PLAIN_TEXT"));
+            AnalyzeSentimentResponse response = languageService.documents().analyzeSentiment(request).execute();
+            return response.getDocumentSentiment();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private String determineNpcTone(Sentiment sentiment) {
+        private String determineNpcTone(Sentiment sentiment) {
         double score = sentiment.getScore();
         double magnitude = sentiment.getMagnitude();
 
