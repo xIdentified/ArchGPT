@@ -1,6 +1,5 @@
 package me.xidentified.archgpt;
 
-import com.google.cloud.language.v2.*;
 import de.cubbossa.tinytranslations.TinyTranslations;
 import de.cubbossa.tinytranslations.TinyTranslationsBukkit;
 import de.cubbossa.tinytranslations.Translator;
@@ -60,7 +59,6 @@ public class ArchGPT extends JavaPlugin {
     private TranslationService translationService;
     private NPCConversationManager conversationManager;
     private NPCEventListener npcEventListener;
-    private LanguageServiceClient languageServiceClient; // for Google Cloud language
     private ConversationDAO conversationDAO;
     private BukkitAudiences audiences;
     Translator translations;

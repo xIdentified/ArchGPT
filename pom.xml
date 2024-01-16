@@ -45,9 +45,6 @@
                                     <include>de.cubbossa:TinyTranslations-bukkit</include>
                                     <include>com.zaxxer:HikariCP</include>
                                     <include>org.bstats</include>>
-                                    <include>com.google.api:gax</include>
-                                    <include>com.google.cloud:google-cloud-language</include>
-                                    <include>com.google.auth:*</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
@@ -202,28 +199,21 @@
             <version>1.12.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
-        <!-- https://central.sonatype.com/artifact/com.google.cloud/google-cloud-language -->
+
         <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-language</artifactId>
+            <groupId>com.google.apis</groupId>
+            <artifactId>google-api-services-language</artifactId>
+            <version>v1beta2-rev20231209-2.0.0</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.google.auth/google-auth-library-oauth2-http -->
         <dependency>
-            <groupId>com.google.auth</groupId>
-            <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.22.0</version>
+            <groupId>com.google.oauth-client</groupId>
+            <artifactId>google-oauth-client</artifactId>
+            <version>1.32.1</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.google.auth/google-auth-library-credentials -->
         <dependency>
-            <groupId>com.google.auth</groupId>
-            <artifactId>google-auth-library-credentials</artifactId>
-            <version>1.22.0</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/com.google.api/gax -->
-        <dependency>
-            <groupId>com.google.api</groupId>
-            <artifactId>gax</artifactId>
-            <version>2.39.0</version>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-jackson2</artifactId>
+            <version>1.40.1</version>
         </dependency>
     </dependencies>
 </project>

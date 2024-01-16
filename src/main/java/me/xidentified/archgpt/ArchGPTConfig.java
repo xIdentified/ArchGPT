@@ -1,9 +1,5 @@
 package me.xidentified.archgpt;
 
-import com.google.api.gax.core.FixedCredentialsProvider;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.language.v2.LanguageServiceClient;
-import com.google.cloud.language.v2.LanguageServiceSettings;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;

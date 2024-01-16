@@ -1,31 +1,42 @@
 package me.xidentified.archgpt.utils;
 
-import com.google.cloud.language.v2.*;
+import com.google.api.services.language.v1beta2.CloudNaturalLanguage;
+import com.google.api.services.language.v1beta2.CloudNaturalLanguageScopes;
+import com.google.api.services.language.v1beta2.model.*;
 import me.xidentified.archgpt.storage.model.Conversation;
-import org.bukkit.Bukkit;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-// TODO: Finish this class - implement into NPCConversationManager
 public class GoogleCloudService {
-    private final LanguageServiceClient languageServiceClient;
+    private final CloudNaturalLanguage languageService;
 
-    public GoogleCloudService(LanguageServiceClient languageServiceClient) {
-        this.languageServiceClient = languageServiceClient;
+    public GoogleCloudService() throws IOException {
+        HttpTransport httpTransport = new NetHttpTransport();
+        JsonFactory jsonFactory = new JacksonFactory();
+
+        // Load the service account key JSON file
+        GoogleCredential credential = GoogleCredential.fromStream(new FileInputStream(jsonPath))
+                .createScoped(CloudNaturalLanguageScopes.all());
+
+        this.languageService = new CloudNaturalLanguage(httpTransport, jsonFactory, credential)
+                .setApplicationName("ArchGPT")
+                .build();
     }
 
     // Below methods are related to NPC memory - sending only relevant previous context to the current API response
-    public List<Entity> analyzePlayerMessageEntities(String message) {
-        try {
-            Document doc = Document.newBuilder().setContent(message).setType(Document.Type.PLAIN_TEXT).build();
-            AnalyzeEntitiesRequest request = AnalyzeEntitiesRequest.newBuilder().setDocument(doc).build();
-            AnalyzeEntitiesResponse response = languageServiceClient.analyzeEntities(request);
-            return response.getEntitiesList();
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("Error analyzing entities: " + e.getMessage());
-            return Collections.emptyList(); // Return an empty list
-        }
+    public List<Entity> analyzePlayerMessageEntities(String message) throws IOException {
+        AnalyzeEntitiesRequest request = new AnalyzeEntitiesRequest()
+                .setDocument(new Document().setContent(message).setType("PLAIN_TEXT"));
+        AnalyzeEntitiesResponse response = languageService.documents().analyzeEntities(request).execute();
+        return response.getEntities();
     }
 
     public boolean isConversationRelatedToPast(String playerMessage, List<Conversation> pastConversations) {
@@ -69,14 +80,11 @@ public class GoogleCloudService {
         return String.format("Respond %s. %s", npcTone, relevantPastConversations);
     }
 
-    public Sentiment analyzePlayerMessageSentiment(String message) {
-        try {
-            Document doc = Document.newBuilder().setContent(message).setType(Document.Type.PLAIN_TEXT).build();
-            return languageServiceClient.analyzeSentiment(doc).getDocumentSentiment();
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("Error analyzing sentiment: " + e.getMessage());
-            return null; // Return null or a default sentiment
-        }
+    public Sentiment analyzePlayerMessageSentiment(String message) throws IOException {
+        AnalyzeSentimentRequest request = new AnalyzeSentimentRequest()
+                .setDocument(new Document().setContent(message).setType("PLAIN_TEXT"));
+        AnalyzeSentimentResponse response = languageService.documents().analyzeSentiment(request).execute();
+        return response.getDocumentSentiment();
     }
 
     private String determineNpcTone(Sentiment sentiment) {

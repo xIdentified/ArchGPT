@@ -9,5 +9,8 @@
         <module name="ArchGPT" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="ArchGPT (1)" target="16" />
+    </bytecodeTargetLevel>
   </component>
 </project>
