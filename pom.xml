@@ -45,9 +45,9 @@
                                     <include>de.cubbossa:TinyTranslations-bukkit</include>
                                     <include>com.zaxxer:HikariCP</include>
                                     <include>org.bstats</include>>
+                                    <include>com.google.api:gax</include>
+                                    <include>com.google.cloud:google-cloud-language</include>
                                     <include>com.google.auth:*</include>
-                                    <include>com.google.api:*</include>
-                                    <include>com.google.cloud:*</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
@@ -99,6 +99,18 @@
             <url>https://nexus.phoenixdevt.fr/repository/maven-public/</url>
         </repository>
     </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>26.29.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -194,7 +206,18 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-language</artifactId>
-            <version>2.34.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.auth/google-auth-library-oauth2-http -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.22.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.auth/google-auth-library-credentials -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-credentials</artifactId>
+            <version>1.22.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.google.api/gax -->
         <dependency>

@@ -12,6 +12,7 @@ import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.apache.commons.lang3.StringUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -65,14 +66,16 @@ public class ConversationUtils {
     }
 
     public void processConversations(UUID playerUUID, List<Conversation> conversations) {
+        String playerName = Bukkit.getOfflinePlayer(playerUUID).getName();
         List<JsonObject> updatedConversationState = new ArrayList<>();
+
         for (Conversation conversation : conversations) {
             String timeContext = getTimeContext(conversation.getTimestamp());
             List<String> relevantSentences = filterShortSentences(conversation.getMessage(), ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
 
             if (!relevantSentences.isEmpty()) {
                 String filteredMessage = String.join(" ", relevantSentences);
-                String contextualMessage = String.format("%s, you spoke about: %s", timeContext, filteredMessage);
+                String contextualMessage = String.format("%s, you and " + playerName + " talked about: %s", timeContext, filteredMessage);
 
                 JsonObject pastMessageJson = new JsonObject();
                 pastMessageJson.addProperty("role", conversation.isFromNPC() ? "assistant" : "user");

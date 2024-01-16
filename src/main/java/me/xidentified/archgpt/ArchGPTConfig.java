@@ -20,8 +20,6 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static net.citizensnpcs.api.CitizensAPI.getDataFolder;
-
 @Slf4j
 @Getter
 public class ArchGPTConfig {
@@ -39,6 +37,7 @@ public class ArchGPTConfig {
     private long chatCooldownMillis;
     private boolean shouldSplitLongMsg;
     private boolean isGoogleNlpEnabled;
+    public boolean googleCloudConfiguredProperly;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -49,7 +48,6 @@ public class ArchGPTConfig {
     private void loadConfig() {
         // Load the configuration file and set default values
         saveDefaultConfig();
-
         FileConfiguration config = plugin.getConfig();
         debugMode = config.getBoolean("debug_mode", false);
         maxApiCallsPerSecond = config.getDouble("max_api_calls_per_second", 5.0);
@@ -73,6 +71,16 @@ public class ArchGPTConfig {
         if (apiKey.equals("YOUR_OPENAI_API_KEY")) {
             logger.severe("OpenAI API key is not set in the config.yml. Plugin will not function properly without it!");
             throw new IllegalStateException("OpenAI API key is missing or invalid.");
+        }
+
+        if (isGoogleNlpEnabled) {
+            File jsonFile = new File(plugin.getDataFolder(), "storage/google-cloud-key.json");
+            if (!jsonFile.exists()) {
+                logger.warning("Google Cloud is enabled, but the JSON key file is missing.");
+                googleCloudConfiguredProperly = false;
+            } else {
+                googleCloudConfiguredProperly = true;
+            }
         }
     }
 
@@ -108,8 +116,12 @@ public class ArchGPTConfig {
     }
 
     public LanguageServiceClient initializeGoogleCloud() throws IOException {
-        File jsonFile = new File(getDataFolder(), "storage/google-cloud-key.json");
-        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonFile));
+        // Path to the service account key JSON file
+        String jsonPath = plugin.getDataFolder().getAbsolutePath() + File.separator + "storage" + File.separator + "google-cloud-key.json";
+
+        // Load the service account key JSON file
+        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(jsonPath))
+                .createScoped(LanguageServiceSettings.getDefaultServiceScopes());
         LanguageServiceSettings settings = LanguageServiceSettings.newBuilder()
                 .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
                 .build();
@@ -167,7 +179,7 @@ public class ArchGPTConfig {
                         + RESET + DARK_BLUE + "--- Settings ---\n" + RESET +
                         YELLOW + "Debug Mode: " + debugMode + "\n" + YELLOW +
                         "ChatGPT Engine: " + chatGptEngine + "\n" + YELLOW +
-                        "Max Response Length: " + maxResponseLength + "\n" + YELLOW +
+                        "Max Response Length: " + maxResponseLength + " tokens" + "\n" + YELLOW +
                         "Max API Calls Per Second: " + maxApiCallsPerSecond + "\n" + YELLOW +
                         "Base Prompt: " + defaultPrompt + "\n" + YELLOW +
                         "NPC Memory Duration: " + plugin.getConfig().getString("npc_memory_duration") + "\n" + YELLOW +

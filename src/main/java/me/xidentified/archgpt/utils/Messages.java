@@ -85,6 +85,9 @@ public class Messages {
             .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt reset-npc-memory <arg>npcName</arg></cmd_syntax>")
             .build();
 
+    public static final Message CLOUD_NOT_CONFIGURED = new MessageBuilder("archgpt.cloud-not-configured")
+            .withDefault("<prefix_warning>Google NLP is enabled, but google-cloud-key.json is not set up! Configure the file in your storage folder and restart the server.")
+            .build();
     public static final Message RELOAD_SUCCESS = new MessageBuilder("archgpt.reload")
             .withDefault("<prefix>ArchGPT successfully reloaded!")
             .build();

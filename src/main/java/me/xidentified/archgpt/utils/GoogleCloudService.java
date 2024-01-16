@@ -28,23 +28,6 @@ public class GoogleCloudService {
         }
     }
 
-    public String tailorNpcResponse(String playerMessage, List<Conversation> pastConversations) {
-        // Filter relevant past conversations
-        List<Conversation> relevantConversations = getRelevantPastConversations(playerMessage, pastConversations);
-
-        // Extract and concatenate the content of relevant conversations
-        String relevantPastConversations = relevantConversations.stream()
-                .map(Conversation::getMessage)
-                .collect(Collectors.joining(" "));
-
-        // Analyze sentiment of the player's message
-        Sentiment sentiment = analyzePlayerMessageSentiment(playerMessage);
-        String npcTone = determineNpcTone(sentiment);
-
-        // Construct the tailored NPC prompt
-        return String.format("Respond %s. %s", npcTone, relevantPastConversations);
-    }
-
     public boolean isConversationRelatedToPast(String playerMessage, List<Conversation> pastConversations) {
         // Split the player's message into words
         Set<String> playerMessageWords = new HashSet<>(Arrays.asList(playerMessage.toLowerCase().split("\\s+")));
@@ -69,6 +52,23 @@ public class GoogleCloudService {
     }
 
     // Methods below related to NPC emotional responses
+    public String tailorNpcResponse(String playerMessage, List<Conversation> pastConversations) {
+        // Filter relevant past conversations
+        List<Conversation> relevantConversations = getRelevantPastConversations(playerMessage, pastConversations);
+
+        // Extract and concatenate the content of relevant conversations
+        String relevantPastConversations = relevantConversations.stream()
+                .map(Conversation::getMessage)
+                .collect(Collectors.joining(" "));
+
+        // Analyze sentiment of the player's message
+        Sentiment sentiment = analyzePlayerMessageSentiment(playerMessage);
+        String npcTone = determineNpcTone(sentiment);
+
+        // Construct the tailored NPC prompt
+        return String.format("Respond %s. %s", npcTone, relevantPastConversations);
+    }
+
     public Sentiment analyzePlayerMessageSentiment(String message) {
         try {
             Document doc = Document.newBuilder().setContent(message).setType(Document.Type.PLAIN_TEXT).build();

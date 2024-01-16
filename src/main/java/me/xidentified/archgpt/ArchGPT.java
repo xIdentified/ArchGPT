@@ -155,6 +155,7 @@ public class ArchGPT extends JavaPlugin {
             }
 
             // Check if Google Cloud NLP is enabled in the configuration
+
             if (getConfig().getBoolean("google_cloud.enabled", false)) {
                 try {
                     this.languageServiceClient = configHandler.initializeGoogleCloud();

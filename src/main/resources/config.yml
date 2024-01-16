@@ -3,7 +3,7 @@ debug_mode: false
 
 api_key: "YOUR_OPENAI_API_KEY"
 chatgpt_engine: "gpt-3.5-turbo-1106" # The OpenAI GPT engine to use
-max_response_length: 200 # Maximum length of response from ChatGPT (in tokens)
+max_response_length: 150 # Maximum length of response from ChatGPT (in tokens)
 max_api_calls_per_second: 5
 
 # Time (in milliseconds) before the conversation times out
@@ -22,7 +22,8 @@ default_prompt: "You live in a server called CarrotCraft. You like to eat carrot
 npcs:
   npc_name: "This is an example prompt for the NPC."
 
-# Gives your NPCs more accurate context to their location in the world, I recommend at least adding spawn.
+# Gives your NPCs more accurate context to their location in the world, I recommend adding landmarks like
+# spawn, towns, any places you want players to go like a public mine, dungeons, etc.
 points_of_interest:
   world:
     Spawn: "0,64,0"
@@ -42,11 +43,11 @@ conversation_end_phrase: "cancel"
 npc_memory_duration: 7d
 
 # Using google cloud to fetch relevant messages in conversation history
-# saves on token usage since we don't have to send all relevant chat
-# history to the API each time. I recommend using!
+# saves on token usage. This also adds emotional context to conversations
+# by determining the tone of the messages. Highly recommended!
+# IMPORTANT: You need to set up the google-cloud-key.json in the storage folder!
 google_cloud:
   enabled: false
-  api_key: 'YOUR_GOOGLE_CLOUD_API_KEY'
 
 storage:
   type: 'sqlite' # Options: sqlite, mysql
