@@ -11,6 +11,7 @@ import org.bukkit.entity.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class EnvironmentalContextProvider {
     private final ArchGPT plugin;
@@ -207,7 +208,7 @@ public class EnvironmentalContextProvider {
         if (!entityCounts.isEmpty()) {
             description.append("There are ").append(entityType).append(" creatures around, such as ");
             for (Map.Entry<String, Integer> entry : entityCounts.entrySet()) {
-                String entityName = entry.getKey();
+                String entityName = formatEntityName(entry.getKey());
                 int count = entry.getValue();
                 description.append(describeQuantity(count)).append(" ").append(entityName).append(count > 1 ? "s" : "").append(", ");
             }
@@ -216,6 +217,12 @@ public class EnvironmentalContextProvider {
             description.append(". ");
         }
         return description.toString();
+    }
+
+    private String formatEntityName(String entityName) {
+        return Arrays.stream(entityName.split("_"))
+                .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
+                .collect(Collectors.joining(" "));
     }
 
     private String describeQuantity(int count) {
@@ -229,7 +236,6 @@ public class EnvironmentalContextProvider {
             return "a lot of";
         }
     }
-
     public String getBiome() {
         Biome biome = player.getLocation().getBlock().getBiome();
 
