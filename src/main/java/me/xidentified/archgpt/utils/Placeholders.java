@@ -40,22 +40,15 @@ public class Placeholders extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer player, String params) {
-        switch (params.toLowerCase()) {
-            case "recent_message":
-                // Assuming you have a method to get the most recent message received by the player
-                return getMostRecentMessage(player);
-
-            case "in_conversation":
-                // Assuming you have a method to check if the player is currently in a conversation
-                return isInConversation(player) ? "Yes" : "No";
-
-            case "npc_name":
-                // Assuming you have a method to get the name of the NPC the player is conversing with
-                return getCurrentNPCName(player);
-
-            default:
-                return null;
-        }
+        return switch (params.toLowerCase()) {
+            case "last_response" ->
+                    getMostRecentMessage(player);
+            case "in_conversation" ->
+                    isInConversation(player) ? "Yes" : "No";
+            case "npc_name" ->
+                    getCurrentNPCName(player);
+            default -> null;
+        };
     }
 
     private String getMostRecentMessage(OfflinePlayer player) {
@@ -68,8 +61,9 @@ public class Placeholders extends PlaceholderExpansion {
             return "No recent messages";
         }
 
-        // TODO: Get the last message
-        return null;
+        // Get the last message from the first conversation in the list
+        Conversation mostRecentConversation = conversations.get(0);
+        return mostRecentConversation.getMessage();
     }
 
     private boolean isInConversation(OfflinePlayer player) {
