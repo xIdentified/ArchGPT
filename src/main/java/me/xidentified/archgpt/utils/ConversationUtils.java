@@ -75,7 +75,7 @@ public class ConversationUtils {
 
             if (!relevantSentences.isEmpty()) {
                 String filteredMessage = String.join(" ", relevantSentences);
-                String contextualMessage = String.format("%s, you and " + playerName + " talked about: %s", timeContext, filteredMessage);
+                String contextualMessage = String.format("%s, you met with " + playerName + " and discussed: %s", timeContext, filteredMessage);
 
                 JsonObject pastMessageJson = new JsonObject();
                 pastMessageJson.addProperty("role", conversation.isFromNPC() ? "assistant" : "user");

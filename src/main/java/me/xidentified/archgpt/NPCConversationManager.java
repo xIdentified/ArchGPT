@@ -2,6 +2,7 @@ package me.xidentified.archgpt;
 
 import com.google.gson.JsonArray;
 import lombok.Getter;
+import me.xidentified.archgpt.context.MemoryContext;
 import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.utils.*;
 import net.citizensnpcs.api.npc.NPC;
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NPCConversationManager {
 
     private final ArchGPT plugin;
+    private final MemoryContext memoryContext;
     @Getter private final ArchGPTConfig configHandler;
     @Getter private final ConversationUtils conversationUtils;
     @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
@@ -32,6 +34,7 @@ public class NPCConversationManager {
     public NPCConversationManager(ArchGPT plugin, ArchGPTConfig configHandler) {
         this.plugin = plugin;
         this.configHandler = configHandler;
+        this.memoryContext = new MemoryContext();
         this.chatRequestHandler = new ChatRequestHandler(plugin);
         this.npcChatStatesCache = new ConcurrentHashMap<>();
         this.playerCooldowns = new ConcurrentHashMap<>();
@@ -143,6 +146,7 @@ public class NPCConversationManager {
         UUID playerUUID = player.getUniqueId();
         NPC npc = playerNPCMap.get(playerUUID);
 
+        // Check if player message is too short
         if (PlainTextComponentSerializer.plainText().serialize(playerMessage).length() < configHandler.getMinCharLength()) {
             plugin.sendMessage(player, Messages.MSG_TOO_SHORT.insertNumber("size", configHandler.getMinCharLength()));
             return;
@@ -152,25 +156,13 @@ public class NPCConversationManager {
         conversationUtils.sendPlayerMessage(player, playerMessage);
 
         // Start animation over NPC head while it processes response
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (npc == null) return;
-                if (npc.isSpawned()) {
-                    hologramManager.removePlayerHologram(playerUUID);
-                    Location npcLocation = npc.getEntity().getLocation();
-                    String hologramText = "...";
-                    hologramManager.createHologram(playerUUID, npcLocation.add(0, 1, 0), hologramText);
-                }
-                hologramManager.animateHologram();
-            }
-        }.runTask(plugin);
+        displayHologramOverNPC(playerUUID, npc, hologramManager);
 
         // Cooldown logic
         long currentTimeMillis = System.currentTimeMillis();
         if (playerCooldowns.containsKey(playerUUID)) {
             long lastTriggerTimeMillis = playerCooldowns.get(playerUUID);
-            long cooldownMillis = getConfigHandler().getChatCooldownMillis();
+            long cooldownMillis = configHandler.getChatCooldownMillis();
             if (currentTimeMillis - lastTriggerTimeMillis < cooldownMillis) {
                 return;
             }
@@ -184,104 +176,110 @@ public class NPCConversationManager {
         JsonObject jsonRequest = new JsonObject();
         JsonArray messages = new JsonArray();
 
-        // Add previous conversation messages to 'messages'
+        // Add the player's current message as a new JsonObject
+        JsonObject userMessageJson = new JsonObject();
+        String playerMessageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
+        userMessageJson.addProperty("role", "user");
+        userMessageJson.addProperty("content", playerMessageText);
+        messages.add(userMessageJson);
+
+        // Check if the player is asking about past conversations
+        if (memoryContext.isAskingAboutPastConversation(playerMessage)) {
+            plugin.debugLog("Player asked about previous conversation, generating summary.");
+            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npc.getName(), configHandler.getNpcMemoryDuration());
+
+            // Generate a summary of past conversations
+            String conversationSummary = memoryContext.summarizeConversations(pastConversations);
+            String formattedSummary = "In response to your inquiry about our previous discussions: " + conversationSummary + " Now, let us continue our current conversation. How can I assist you further?";
+
+            // Create a JSON object for the summary
+            JsonObject summaryJson = new JsonObject();
+            summaryJson.addProperty("role", "system");
+            summaryJson.addProperty("content", formattedSummary);
+            messages.add(summaryJson); // Add immediately after the player's message
+        }
+
+        // Add remaining conversation messages to 'messages'
         for (JsonObject messageJson : conversationState) {
             messages.add(messageJson);
         }
 
-        GoogleCloudService googleCloudService = new GoogleCloudService(configHandler.getGoogleCloudApiKey());
+        // Set the 'model', 'messages', and 'max_tokens' fields in the request
+        jsonRequest.addProperty("model", configHandler.getChatGptEngine());
+        jsonRequest.add("messages", messages);
+        jsonRequest.addProperty("max_tokens", configHandler.getMaxResponseLength());
 
-        // Check if the player is asking about past conversations
-        boolean isAskingAboutPast = googleCloudService.isAskingAboutPastConversation(playerMessage);
-        List<Conversation> pastConversations = isAskingAboutPast ? plugin.getConversationDAO().getConversations(playerUUID, npc.getName(), configHandler.getNpcMemoryDuration()) : Collections.emptyList();
+        // Send the request and process the response
+        CompletableFuture<Object> future = getChatRequestHandler().processChatGPTRequest(player, jsonRequest, ChatRequestHandler.RequestType.CONVERSATION, playerMessage, conversationState);
+        processNpcResponse(future, player, npc, hologramManager);
+    }
 
-        // If asking about past conversations, add them to messages
-        if (!pastConversations.isEmpty()) {
-            addPastConversationsToJsonArray(pastConversations, messages);
-        }
+    private void displayHologramOverNPC(UUID playerUUID, NPC npc, HologramManager hologramManager) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (npc == null || !npc.isSpawned()) return;
+                hologramManager.removePlayerHologram(playerUUID);
+                Location npcLocation = npc.getEntity().getLocation();
+                hologramManager.createHologram(playerUUID, npcLocation.add(0, 1, 0), "...");
+                hologramManager.animateHologram();
+            }
+        }.runTask(plugin);
+    }
 
-        // If Google NLP is enabled, use tailorNpcResponse to determine emotional context
-        if (configHandler.isGoogleNlpEnabled()) {
-            // TODO: Use googleCloudService to get tone
-        }
+    private void processNpcResponse(CompletableFuture<Object> future, Player player, NPC npc, HologramManager hologramManager) {
+        UUID playerUUID = player.getUniqueId();
+        future.thenAccept(responseObject -> {
+            synchronized (npcChatStatesCache) {
+                if (!plugin.getActiveConversations().containsKey(playerUUID)) return;
+                if (responseObject instanceof Pair<?, ?> rawPair) {
 
-            // Add the player's current message as a new JsonObject
-            JsonObject userMessageJson = new JsonObject();
-            String playerMessageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
-            userMessageJson.addProperty("role", "user");
-            userMessageJson.addProperty("content", playerMessageText);
-            messages.add(userMessageJson);
+                    Object leftObject = rawPair.getLeft();
+                    Object rightObject = rawPair.getRight();
 
-            // Set the 'model', 'messages', and 'max_tokens' fields in the request
-            jsonRequest.addProperty("model", configHandler.getChatGptEngine());
-            jsonRequest.add("messages", messages);
-            jsonRequest.addProperty("max_tokens", configHandler.getMaxResponseLength());
+                    if (leftObject instanceof String response && rightObject instanceof List<?>) {
+                        // Check if the list contains JsonObjects
+                        if (((List<?>) rawPair.getRight()).stream().allMatch(item -> item instanceof JsonObject)) {
+                            @SuppressWarnings("unchecked") // Safe after checking all elements
+                            List<JsonObject> updatedConversationState = (List<JsonObject>) rawPair.getRight();
 
-            // Send the request
-            CompletableFuture<Object> future = getChatRequestHandler().processChatGPTRequest(player, jsonRequest, ChatRequestHandler.RequestType.CONVERSATION, playerMessage, conversationState);
+                            npcChatStatesCache.put(playerUUID, updatedConversationState);
 
-            future.thenAccept(responseObject -> {
-                synchronized (npcChatStatesCache) {
-                    if (!plugin.getActiveConversations().containsKey(playerUUID)) return;
-                    if (responseObject instanceof Pair<?, ?> rawPair) {
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    if (plugin.getActiveConversations().containsKey(playerUUID)) {
+                                        conversationUtils.sendNPCMessage(player, npc, response);
 
-                        Object leftObject = rawPair.getLeft();
-                        Object rightObject = rawPair.getRight();
+                                        // Save the message if the response is a significant length
+                                        List<String> relevantSentences = conversationUtils.filterShortSentences(response, ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
 
-                        if (leftObject instanceof String response && rightObject instanceof List<?>) {
-                            // Check if the list contains JsonObjects
-                            if (((List<?>) rawPair.getRight()).stream().allMatch(item -> item instanceof JsonObject)) {
-                                @SuppressWarnings("unchecked") // Safe after checking all elements
-                                List<JsonObject> updatedConversationState = (List<JsonObject>) rawPair.getRight();
-
-                                if (!conversationState.equals(updatedConversationState)) {
-                                    npcChatStatesCache.put(playerUUID, updatedConversationState);
-                                }
-
-                                new BukkitRunnable() {
-                                    @Override
-                                    public void run() {
-                                        if (plugin.getActiveConversations().containsKey(playerUUID)) {
-                                            conversationUtils.sendNPCMessage(player, npc, response);
-
-                                            // Save the message if the response is a significant length
-                                            List<String> relevantSentences = conversationUtils.filterShortSentences(response, ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
-
-                                            if (!relevantSentences.isEmpty()) {
-                                                String filteredResponseText = String.join(" ", relevantSentences);
-                                                Conversation conversation = new Conversation(
-                                                        player.getUniqueId(),
-                                                        npc.getName(),
-                                                        filteredResponseText,
-                                                        System.currentTimeMillis(),
-                                                        true
-                                                );
-                                                plugin.getConversationDAO().saveConversation(conversation);
-                                            }
-
-                                            hologramManager.removePlayerHologram(playerUUID);
+                                        if (!relevantSentences.isEmpty()) {
+                                            String filteredResponseText = String.join(" ", relevantSentences);
+                                            Conversation conversation = new Conversation(
+                                                    player.getUniqueId(),
+                                                    npc.getName(),
+                                                    filteredResponseText,
+                                                    System.currentTimeMillis(),
+                                                    true
+                                            );
+                                            plugin.getConversationDAO().saveConversation(conversation);
                                         }
+
+                                        hologramManager.removePlayerHologram(playerUUID);
                                     }
-                                }.runTaskLater(plugin, 20L);
-                                getConversationTimeoutManager().resetConversationTimeout(playerUUID);
-                            }
+                                }
+                            }.runTaskLater(plugin, 20L);
+                            getConversationTimeoutManager().resetConversationTimeout(playerUUID);
                         }
                     }
                 }
-            });
+            }
+        });
     }
 
     public boolean playerInConversation(UUID playerUUID) {
         return plugin.getActiveConversations().containsKey(playerUUID);
-    }
-
-    private void addPastConversationsToJsonArray(List<Conversation> pastConversations, JsonArray messages) {
-        for (Conversation conversation : pastConversations) {
-            JsonObject pastMessageJson = new JsonObject();
-            pastMessageJson.addProperty("role", conversation.isFromNPC() ? "assistant" : "user");
-            pastMessageJson.addProperty("content", conversation.getMessage());
-            messages.add(0); // Add at beginning of list
-        }
     }
 
 }
