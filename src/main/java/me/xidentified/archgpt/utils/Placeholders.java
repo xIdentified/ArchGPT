@@ -2,8 +2,14 @@ package me.xidentified.archgpt.utils;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import me.xidentified.archgpt.ArchGPT;
+import me.xidentified.archgpt.storage.model.Conversation;
+import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
 
 public class Placeholders extends PlaceholderExpansion {
     private final ArchGPT plugin;
@@ -53,7 +59,17 @@ public class Placeholders extends PlaceholderExpansion {
     }
 
     private String getMostRecentMessage(OfflinePlayer player) {
-        return "Your most recent message"; // TODO: finish
+        UUID playerUUID = player.getUniqueId();
+        String npcName = getCurrentNPCName(player);
+        Duration memoryDuration = Duration.ofHours(1);
+
+        List<Conversation> conversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, memoryDuration);
+        if (conversations.isEmpty()) {
+            return "No recent messages";
+        }
+
+        // TODO: Get the last message
+        return null;
     }
 
     private boolean isInConversation(OfflinePlayer player) {
@@ -62,7 +78,8 @@ public class Placeholders extends PlaceholderExpansion {
 
     private String getCurrentNPCName(OfflinePlayer player) {
         if (isInConversation(player)) {
-            return "NPC Name"; // TODO: finish this
+            NPC npc = plugin.getConversationManager().playerNPCMap.get(player.getUniqueId());
+            if (npc != null) return npc.getName();
         }
         return "None";
     }
