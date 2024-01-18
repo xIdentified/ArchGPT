@@ -48,12 +48,10 @@ public class Placeholders extends PlaceholderExpansion {
                 return getCurrentNPCName(player);
 
             default:
-                // Fallback for unknown placeholders
-                return plugin.getConfig().getString("placeholders." + params, "unknown_placeholder");
+                return null;
         }
     }
 
-    // Example methods (implement these based on your actual data structure and logic)
     private String getMostRecentMessage(OfflinePlayer player) {
         return "Your most recent message"; // TODO: finish
     }

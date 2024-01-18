@@ -8,15 +8,11 @@ import me.xidentified.archgpt.utils.LocaleUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
-import javax.naming.ServiceUnavailableException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -46,36 +42,29 @@ public class ChatRequestHandler {
                 Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
                 semaphore.acquire();
 
-                HttpPost httpPost = getHttpPost();
-                String jsonRequest = requestBody.toString();
-                httpPost.setEntity(new StringEntity(jsonRequest, StandardCharsets.UTF_8));
+                HttpRequest request = buildHttpRequest(requestBody.toString());
+                plugin.debugLog("Request body sent to GPT: " + requestBody);
 
-                plugin.debugLog("Request body sent to GPT: " + jsonRequest);
+                HttpResponse<String> response = plugin.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+                int statusCode = response.statusCode();
+                plugin.debugLog("Received response from ChatGPT API, Status Code: " + statusCode);
 
-                try (CloseableHttpResponse response = plugin.getHttpClient().execute(httpPost)) {
-                    int statusCode = response.getStatusLine().getStatusCode();
-                    plugin.debugLog("Received response from ChatGPT API, Status Code: " + statusCode);
-
-                    if (response.getStatusLine().getStatusCode() == 200) {
-                        String jsonResponse = EntityUtils.toString(response.getEntity());
-                        JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
-                        return extractAssistantResponseText(responseObject);
-                    } else {
-                        String responseString = EntityUtils.toString(response.getEntity());
-                        if (statusCode == 503) {
-                            throw new ServiceUnavailableException("ChatGPT API Service Unavailable: " + responseString);
-                        } else {
-                            throw new RuntimeException("ChatGPT API Error: " + responseString);
-                        }
-                    }
+                if (statusCode == 200) {
+                    String jsonResponse = response.body();
+                    JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
+                    return extractAssistantResponseText(responseObject);
+                } else if (statusCode == 503) {
+                    plugin.getLogger().warning("ChatGPT API is currently unavailable. Please try again later.");
+                    return "Sorry, I am unable to respond right now. Please try again later.";
+                } else {
+                    plugin.getLogger().severe("ChatGPT API Error: Status Code " + statusCode + " - " + response.body());
+                    throw new RuntimeException("ChatGPT API Error: Status Code " + statusCode);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("Thread was interrupted: " + e.getMessage());
-            } catch (ServiceUnavailableException e) {
-                plugin.getLogger().warning("ChatGPT API is currently unavailable. Please try again later.");
-                return "Sorry, I am unable to respond right now. Please try again later.";
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
+                plugin.getLogger().severe("ChatGPT API Request Failed: " + e.getMessage());
                 throw new RuntimeException("ChatGPT API Request Failed: " + e.getMessage());
             } finally {
                 // Ensure the semaphore is released for this player
@@ -142,16 +131,16 @@ public class ChatRequestHandler {
         return "";
     }
 
-    @NotNull
-    private HttpPost getHttpPost() {
+    private HttpRequest buildHttpRequest(String jsonRequestBody) {
         String apiKey = plugin.getConfigHandler().getOpenAiApiKey();
-        String chatGptEndpoint = "https://api.openai.com/v1/chat/completions";
-        HttpPost httpPost = new HttpPost(chatGptEndpoint);
+        URI uri = URI.create("https://api.openai.com/v1/chat/completions");
 
-        // Set the request headers
-        httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
-        httpPost.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-        return httpPost;
+        return HttpRequest.newBuilder()
+                .uri(uri)
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonRequestBody, StandardCharsets.UTF_8))
+                .build();
     }
 
 }
