@@ -34,10 +34,39 @@ public class Placeholders extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer player, String params) {
-        if(params.equalsIgnoreCase("placeholder1")){
-            return plugin.getConfig().getString("placeholders.placeholder1", "default1");
-        }
+        switch (params.toLowerCase()) {
+            case "recent_message":
+                // Assuming you have a method to get the most recent message received by the player
+                return getMostRecentMessage(player);
 
-        return null; // Placeholder is unknown by the Expansion
+            case "in_conversation":
+                // Assuming you have a method to check if the player is currently in a conversation
+                return isInConversation(player) ? "Yes" : "No";
+
+            case "npc_name":
+                // Assuming you have a method to get the name of the NPC the player is conversing with
+                return getCurrentNPCName(player);
+
+            default:
+                // Fallback for unknown placeholders
+                return plugin.getConfig().getString("placeholders." + params, "unknown_placeholder");
+        }
     }
+
+    // Example methods (implement these based on your actual data structure and logic)
+    private String getMostRecentMessage(OfflinePlayer player) {
+        return "Your most recent message"; // TODO: finish
+    }
+
+    private boolean isInConversation(OfflinePlayer player) {
+        return plugin.getConversationManager().playerInConversation(player.getUniqueId());
+    }
+
+    private String getCurrentNPCName(OfflinePlayer player) {
+        if (isInConversation(player)) {
+            return "NPC Name"; // TODO: finish this
+        }
+        return "None";
+    }
+
 }
