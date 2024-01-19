@@ -1,18 +1,15 @@
 package me.xidentified.archgpt.utils;
 
-import com.google.gson.JsonObject;
 import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.ArchGPTConfig;
 import me.xidentified.archgpt.NPCConversationManager;
 import me.xidentified.archgpt.context.EnvironmentalContextProvider;
 import me.xidentified.archgpt.context.PlayerContextProvider;
-import me.xidentified.archgpt.storage.model.Conversation;
 import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.apache.commons.lang3.StringUtils;
-import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -20,7 +17,6 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -47,46 +43,6 @@ public class ConversationUtils {
         String tokenContext = "Use no more than " + configHandler.getMaxResponseLength() + " completion_tokens in your response.";
 
         return environmentalContext + " " + playerSpecificContext + " " + tokenContext;
-    }
-
-    public String getTimeContext(long pastTimestamp) {
-        long currentTimestamp = Instant.now().toEpochMilli();
-        long timeDifferenceMillis = currentTimestamp - pastTimestamp;
-        long timeDifferenceInMinecraftDays = timeDifferenceMillis / (1200 * 1000);  // Convert milliseconds to Minecraft days
-
-        if (timeDifferenceInMinecraftDays < 1) {
-            return "Earlier today";
-        } else if (timeDifferenceInMinecraftDays < 7) {
-            return "A few days ago";
-        } else if (timeDifferenceInMinecraftDays < 30) {
-            return "Earlier this month";
-        } else {
-            return "Some time ago";
-        }
-    }
-
-    public void processConversations(UUID playerUUID, List<Conversation> conversations) {
-        String playerName = Bukkit.getOfflinePlayer(playerUUID).getName();
-        List<JsonObject> updatedConversationState = new ArrayList<>();
-
-        for (Conversation conversation : conversations) {
-            String timeContext = getTimeContext(conversation.getTimestamp());
-            List<String> relevantSentences = filterShortSentences(conversation.getMessage(), ArchGPTConstants.MINIMUM_SAVED_SENTENCE_LENGTH);
-
-            if (!relevantSentences.isEmpty()) {
-                String filteredMessage = String.join(" ", relevantSentences);
-                String contextualMessage = String.format("%s, you met with " + playerName + " and discussed: %s", timeContext, filteredMessage);
-
-                JsonObject pastMessageJson = new JsonObject();
-                pastMessageJson.addProperty("role", conversation.isFromNPC() ? "assistant" : "user");
-                pastMessageJson.addProperty("content", contextualMessage);
-                updatedConversationState.add(pastMessageJson);
-            }
-        }
-
-        List<JsonObject> initialConversationState = plugin.getConversationManager().npcChatStatesCache.getOrDefault(playerUUID, new ArrayList<>());
-        updatedConversationState.addAll(0, initialConversationState);
-        plugin.getConversationManager().npcChatStatesCache.put(playerUUID, updatedConversationState);
     }
 
     public boolean isInLineOfSight(NPC npc, Player player) {
@@ -190,7 +146,7 @@ public class ConversationUtils {
 
     public List<String> filterShortSentences(String message, int minLength) {
         List<String> filteredSentences = new ArrayList<>();
-        String[] sentences = message.split("(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|!)\\s");
+        String[] sentences = message.split("(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=[.?!])\\s");
 
         for (String sentence : sentences) {
             if (sentence.length() >= minLength) {

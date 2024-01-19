@@ -6,7 +6,6 @@ debug_mode: false
 api_key: "YOUR_OPENAI_API_KEY"
 chatgpt_engine: "gpt-3.5-turbo-1106" # The OpenAI GPT engine to use
 max_response_length: 150 # Maximum length of response from ChatGPT (in tokens)
-max_api_calls_per_second: 5
 
 # Time (in milliseconds) before the conversation times out
 response_timeout: 60000

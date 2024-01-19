@@ -19,18 +19,15 @@ public class ArchGPTConfig {
     private final Logger logger;
     private final JavaPlugin plugin;
     private boolean debugMode;
-    private double maxApiCallsPerSecond;
     private long npcChatTimeoutMillis;
     private String defaultPrompt;
     private String chatGptEngine;
     private String openAiApiKey;
-    private String googleCloudApiKey;
     private Duration npcMemoryDuration;
     private int minCharLength;
     private int maxResponseLength;
     private long chatCooldownMillis;
     private boolean shouldSplitLongMsg;
-    private boolean isGoogleNlpEnabled;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -43,7 +40,6 @@ public class ArchGPTConfig {
         saveDefaultConfig();
         FileConfiguration config = plugin.getConfig();
         debugMode = config.getBoolean("debug_mode", false);
-        maxApiCallsPerSecond = config.getDouble("max_api_calls_per_second", 5.0);
         npcChatTimeoutMillis = config.getLong("response_timeout", 60000);
         defaultPrompt = config.getString("default_prompt", "Hello!");
         chatGptEngine = config.getString("chatgpt_engine", "gpt-3.5-turbo-1106");
@@ -53,7 +49,6 @@ public class ArchGPTConfig {
         String durationString = config.getString("npc_memory_duration", "7d");
         npcMemoryDuration = parseMinecraftDuration(durationString);
         shouldSplitLongMsg = config.getBoolean("split_long_messages", false);
-        isGoogleNlpEnabled = config.getBoolean("google_cloud.enabled", false);
 
         // Set the logger level based on debugMode
         Level loggerLevel = debugMode ? Level.INFO : Level.WARNING;
@@ -65,18 +60,6 @@ public class ArchGPTConfig {
             logger.severe("OpenAI API key is not set in the config.yml. Plugin will not function properly without it!");
             throw new IllegalStateException("OpenAI API key is missing or invalid.");
         }
-
-        // Check if Google Cloud is enabled and if the API key is set
-        if (plugin.getConfig().getBoolean("google_cloud.enabled", false)) {
-            this.googleCloudApiKey = plugin.getConfig().getString("google_cloud.api_key", "YOUR_GOOGLE_CLOUD_API_KEY");
-            if (this.googleCloudApiKey.isEmpty() || this.googleCloudApiKey.equals("YOUR_GOOGLE_CLOUD_API_KEY")) {
-                logger.warning("Google Cloud is enabled, but the API key is not set or invalid. Enhanced features will not be available.");
-                this.googleCloudApiKey = null; // Google Cloud features won't be available
-            }
-        } else {
-            this.googleCloudApiKey = null; // Google Cloud is not enabled
-        }
-
     }
 
     public void saveDefaultConfig() {
@@ -161,7 +144,6 @@ public class ArchGPTConfig {
                         YELLOW + "Debug Mode: " + debugMode + "\n" + YELLOW +
                         "ChatGPT Engine: " + chatGptEngine + "\n" + YELLOW +
                         "Max Response Length: " + maxResponseLength + " tokens" + "\n" + YELLOW +
-                        "Max API Calls Per Second: " + maxApiCallsPerSecond + "\n" + YELLOW +
                         "Base Prompt: " + defaultPrompt + "\n" + YELLOW +
                         "NPC Memory Duration: " + plugin.getConfig().getString("npc_memory_duration") + "\n" + YELLOW +
                         "Conversation Timeout: " + npcChatTimeoutMillis + "\n" + YELLOW +
