@@ -1,6 +1,7 @@
 package me.xidentified.archgpt.context;
 
 import lombok.Getter;
+import me.xidentified.archgpt.ArchGPT;
 import me.xidentified.archgpt.storage.model.Conversation;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 
 @Getter
 public class MemoryContext {
+    private final ArchGPT plugin;
     private final Queue<String> recentConversations; // Store recent conversations
     private final Pattern inquiryPattern;
     private static final Set<String> STOP_WORDS = Set.of( // Common words to be excluded
@@ -26,12 +28,29 @@ public class MemoryContext {
             "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all",
             "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not",
             "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don",
-            "should", "now", "ah"
+            "should", "now", "ah", "ahoy"
     );
-    public MemoryContext() {
+
+    public MemoryContext(ArchGPT plugin) {
         this.recentConversations = new LinkedList<>();
+        this.plugin = plugin;
         String inquiryKeywords = "earlier|before|previously|past|you said";
         inquiryPattern = Pattern.compile("\\b(" + inquiryKeywords + ")\\b", Pattern.CASE_INSENSITIVE);
+    }
+
+    // Returns past conversation summary IF player is inquiring about them
+    public String getConversationSummary(Component playerMessage, UUID playerUUID, String npcName) {
+        if (isAskingAboutPastConversation(playerMessage)) {
+            List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npcName, plugin.getConfigHandler().getNpcMemoryDuration());
+
+            if (pastConversations.isEmpty()) {
+                return "We haven't spoken before.";
+            } else {
+                String conversationSummary = summarizeConversations(pastConversations);
+                return "Here's a summary of your previous conversation with " + npcName + ": " + conversationSummary;
+            }
+        }
+        return null;
     }
 
     public boolean isAskingAboutPastConversation(Component playerMessage) {
@@ -40,7 +59,6 @@ public class MemoryContext {
     }
 
     public String summarizeConversations(List<Conversation> conversations) {
-        // Convert Conversation objects to strings
         List<String> conversationTexts = conversations.stream()
                 .map(Conversation::getMessage)
                 .collect(Collectors.toList());
@@ -51,15 +69,36 @@ public class MemoryContext {
                 .collect(Collectors.joining("|"));
         Pattern sentencePattern = Pattern.compile("[^.!?]*\\b(" + keywordPattern + ")\\b[^.!?]*[.!?]");
 
-        Set<String> summarySentences = new HashSet<>();
+        PriorityQueue<String> summarySentences = new PriorityQueue<>(
+                Comparator.comparingInt((String s) -> -countKeywords(s, topKeywords))
+        );
+
         for (String conversation : conversationTexts) {
             Matcher matcher = sentencePattern.matcher(conversation);
             while (matcher.find()) {
                 summarySentences.add(matcher.group());
+                if (summarySentences.size() > 3) { // Keep only top 3 sentences
+                    summarySentences.poll();
+                }
             }
         }
 
-        return String.join(" ", summarySentences);
+        // Convert the priority queue to a list and reverse it to get the sentences in the original order
+        List<String> sortedSentences = new ArrayList<>(summarySentences);
+        Collections.reverse(sortedSentences);
+
+        return String.join(" ", sortedSentences);
+    }
+
+    private int countKeywords(String sentence, Set<String> keywords) {
+        String[] words = sentence.toLowerCase().split("\\s+");
+        int count = 0;
+        for (String word : words) {
+            if (keywords.contains(word)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private Set<String> extractKeywords(List<String> conversationTexts) {
