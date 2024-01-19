@@ -17,7 +17,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.*;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,7 +27,6 @@ public class NPCEventListener implements Listener {
     private final ArchGPTConfig configHandler;
     private final Set<UUID> npcsProcessingGreeting = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Long> lastChatTimestamps = new ConcurrentHashMap<>();
-    private final Map<UUID, String> lastPlayerMessages = new ConcurrentHashMap<>();
 
     public NPCEventListener(ArchGPT plugin, NPCConversationManager conversationManager, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -65,7 +63,7 @@ public class NPCEventListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerChat(AsyncPlayerChatEvent event) throws IOException {
+    public void onPlayerChat(AsyncPlayerChatEvent event) {
         synchronized (conversationManager.npcChatStatesCache) {
             Player player = event.getPlayer();
             UUID playerUUID = player.getUniqueId();
@@ -89,7 +87,6 @@ public class NPCEventListener implements Listener {
             }
 
             event.setCancelled(true); // Prevent chat messages from going out to everyone
-            lastPlayerMessages.put(player.getUniqueId(), message);
 
             // Handle player reporting state
             if (conversationManager.getConversationUtils().handleReportingState(player, event)) {
@@ -189,10 +186,6 @@ public class NPCEventListener implements Listener {
         UUID playerUUID = event.getPlayer().getUniqueId();
         npcsProcessingGreeting.remove(playerUUID);
         plugin.playerSemaphores.remove(playerUUID);
-    }
-
-    public String getLastMessage(UUID playerUUID) {
-        return lastPlayerMessages.getOrDefault(playerUUID, "");
     }
 
 }

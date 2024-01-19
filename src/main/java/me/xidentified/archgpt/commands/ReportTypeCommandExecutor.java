@@ -29,7 +29,7 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
         }
 
         if (!plugin.getConversationManager().playerInConversation(player.getUniqueId())) {
-            plugin.sendMessage(sender, Messages.GENERAL_CMD_NO_PERM);
+            plugin.sendMessage(sender, Messages.REPORT_NOT_IN_CONVERSATION);
             return true;
         }
 
@@ -38,7 +38,6 @@ public class ReportTypeCommandExecutor implements CommandExecutor {
             String uniqueMessageIdentifier = args.length > 0 ? args[0] : null;
 
             if (uniqueMessageIdentifier != null) {
-                // TODO: Use this to tie back the report to a specific NPC message
                 plugin.debugLog("Received report request for message ID: " + uniqueMessageIdentifier);
             }
 
