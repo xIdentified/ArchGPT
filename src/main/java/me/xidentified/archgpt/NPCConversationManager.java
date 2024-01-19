@@ -172,36 +172,33 @@ public class NPCConversationManager {
         // Process chat request
         List<JsonObject> conversationState = npcChatStatesCache.get(playerUUID);
 
-        // Prepare the request payload as a JsonObject
         JsonObject jsonRequest = new JsonObject();
         JsonArray messages = new JsonArray();
 
-        // Add the player's current message as a new JsonObject
+        // 1. Add all messages from the current conversation
+        for (JsonObject messageJson : conversationState) {
+            messages.add(messageJson);
+        }
+
+        // 2. Add the player's current message
         JsonObject userMessageJson = new JsonObject();
         String playerMessageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
         userMessageJson.addProperty("role", "user");
         userMessageJson.addProperty("content", playerMessageText);
         messages.add(userMessageJson);
 
-        // Check if the player is asking about past conversations
+        // 3. Add summary of past conversations if the player is asking about them
         if (memoryContext.isAskingAboutPastConversation(playerMessage)) {
             plugin.debugLog("Player asked about previous conversation, generating summary.");
             List<Conversation> pastConversations = plugin.getConversationDAO().getConversations(playerUUID, npc.getName(), configHandler.getNpcMemoryDuration());
 
-            // Generate a summary of past conversations
             String conversationSummary = memoryContext.summarizeConversations(pastConversations);
             String formattedSummary = "In response to your inquiry about our previous discussions: " + conversationSummary + " Now, let us continue our current conversation. How can I assist you further?";
 
-            // Create a JSON object for the summary
             JsonObject summaryJson = new JsonObject();
             summaryJson.addProperty("role", "system");
             summaryJson.addProperty("content", formattedSummary);
-            messages.add(summaryJson); // Add immediately after the player's message
-        }
-
-        // Add remaining conversation messages to 'messages'
-        for (JsonObject messageJson : conversationState) {
-            messages.add(messageJson);
+            messages.add(summaryJson);
         }
 
         // Set the 'model', 'messages', and 'max_tokens' fields in the request
