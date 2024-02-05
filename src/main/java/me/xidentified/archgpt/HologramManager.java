@@ -40,23 +40,24 @@ public class HologramManager {
      * @param player The player interacting with the NPC.
      */
     public void showInteractionHologram(NPC npc, Player player) {
-        // if (!player.hasPlayedBefore) {
-        String hologramText = plugin.getConfig().getString("conversation_start_popup");
-        if (hologramText != null) {
-            Location hologramLocation = getHologramLocation(npc.getEntity().getLocation());
-            UUID playerUUID = player.getUniqueId();
+        if (!player.hasPlayedBefore()) {
+            String hologramText = plugin.getConfig().getString("conversation_start_popup");
+            if (hologramText != null) {
+                Location hologramLocation = getHologramLocation(npc.getEntity().getLocation());
+                UUID playerUUID = player.getUniqueId();
 
-            // Create the hologram at the desired location
-            createHologram(playerUUID, hologramLocation, hologramText);
+                // Create the hologram at the desired location
+                createHologram(playerUUID, hologramLocation, hologramText);
 
-            // Scroll text if it's longer than the character limit
-            int characterLimit = 12;
-            if (hologramText.length() > characterLimit) {
-                createScrollingHologram(playerUUID, hologramText, characterLimit);
+                // Scroll text if it's longer than the character limit
+                int characterLimit = 12;
+                if (hologramText.length() > characterLimit) {
+                    createScrollingHologram(playerUUID, hologramText, characterLimit);
+                }
+
+                // Remove the hologram after a delay
+                Bukkit.getScheduler().runTaskLater(plugin, () -> removePlayerHologram(playerUUID), 200L); // 10s delay
             }
-
-            // Remove the hologram after a delay
-            Bukkit.getScheduler().runTaskLater(plugin, () -> removePlayerHologram(playerUUID), 200L); // 10s delay
         }
     }
 
