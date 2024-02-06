@@ -39,7 +39,7 @@ public class ConversationUtils {
         PlayerContextProvider playerContext = new PlayerContextProvider(player);
         String environmentalContext = envContext.getFormattedContext(npcPrompt);
         String playerSpecificContext = playerContext.getFormattedContext("");
-        String tokenContext = "Use no more than " + configHandler.getMaxResponseLength() + " completion_tokens in your response.";
+        String tokenContext = "Be concise in your replies and use no more than " + configHandler.getMaxResponseLength() + " completion_tokens in each response.";
 
         return environmentalContext + " " + playerSpecificContext + " " + tokenContext;
     }

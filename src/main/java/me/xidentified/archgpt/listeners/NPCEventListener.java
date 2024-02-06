@@ -191,7 +191,6 @@ public class NPCEventListener implements Listener {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
         Location to = event.getTo();
-        AtomicBoolean conversationEnded = new AtomicBoolean(false);
         long currentTime = System.currentTimeMillis();
 
         // Retrieve the player's cooldown map and greeted state map for NPCs
@@ -201,28 +200,42 @@ public class NPCEventListener implements Listener {
         if (npcCooldowns != null && npcGreetedStates != null) {
             npcCooldowns.keySet().forEach(npcUUID -> {
                 NPC npc = CitizensAPI.getNPCRegistry().getByUniqueId(npcUUID);
-                if (npc != null && npc.isSpawned() && npcGreetedStates.getOrDefault(npcUUID, false)) {
-                    double distance = to.distance(npc.getEntity().getLocation());
-                    if (distance > ArchGPTConstants.GREETING_RADIUS) {
-                        // Player has definitively moved away from this NPC, reset cooldown and greeted state
-                        npcCooldowns.put(npcUUID, currentTime);  // start cooldown
-                        npcGreetedStates.put(npcUUID, false);
+                if (npc != null && npc.isSpawned()) {
+                    Entity npcEntity = npc.getEntity();
+                    if (npcEntity != null && player.getWorld().equals(npcEntity.getWorld())) {
+                        double distance = to.distance(npcEntity.getLocation());
+                        if (distance > ArchGPTConstants.GREETING_RADIUS) {
+                            // Player has definitively moved away from this NPC, reset cooldown and greeted state
+                            npcCooldowns.put(npcUUID, currentTime);  // Start cooldown
+                            npcGreetedStates.put(npcUUID, false);
+                        }
                     }
                 }
             });
         }
 
-        // Perform actions based on conditions checked inside the lambda
-        if (conversationEnded.get()) {
-            conversationManager.endConversation(playerUUID);
-            plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
-        } else {
-            // Handle world change for the NPC player was having a conversation with, if any
-            NPC npc = conversationManager.playerNPCMap.get(playerUUID);
-            if (npc != null && player.getWorld() != npc.getEntity().getWorld()) {
-                conversationManager.endConversation(playerUUID);
-                plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
+        // Check if the player is in a conversation and has strayed too far
+        if (conversationManager.playerInConversation(playerUUID)) {
+            NPC conversingNPC = conversationManager.playerNPCMap.get(playerUUID);
+            if (conversingNPC != null && conversingNPC.isSpawned()) {
+                double distance = to.distance(conversingNPC.getEntity().getLocation());
+                if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
+                    conversationManager.endConversation(playerUUID);
+                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
+                }
             }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
+        Player player = event.getPlayer();
+        UUID playerUUID = player.getUniqueId();
+
+        // End conversation if player changes worlds
+        if (conversationManager.playerInConversation(playerUUID)) {
+            conversationManager.endConversation(playerUUID);
+            plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
         }
     }
 
