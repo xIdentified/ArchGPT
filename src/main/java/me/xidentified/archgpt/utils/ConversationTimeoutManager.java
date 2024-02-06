@@ -51,8 +51,6 @@ public class ConversationTimeoutManager {
     }
 
     public void cancelConversationTimeout(UUID playerUUID) {
-        plugin.debugLog("Player " + playerUUID + " canceled the conversation");
-
         // Get the existing conversation timeout task for the player
         synchronized (plugin.getNpcChatStatesCache()) {
             ScheduledFuture<?> timeoutTask = conversationTimeoutTasks.remove(playerUUID);

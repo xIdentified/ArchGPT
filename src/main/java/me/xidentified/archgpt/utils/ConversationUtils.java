@@ -9,7 +9,6 @@ import me.xidentified.archgpt.storage.model.Report;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.apache.commons.lang3.StringUtils;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -117,17 +116,47 @@ public class ConversationUtils {
 
     public void sendNPCMessage(Player player, NPC npc, String response) {
         boolean splitLongMessages = configHandler.isShouldSplitLongMsg();
+        int MAX_MESSAGE_LENGTH = 256; // Maximum characters a Minecraft chat message can hold
 
         if (splitLongMessages) {
-            // Split the response into parts after every few sentences and send each part as a separate message
+            // Split the response into sentences
             String[] sentences = response.split("(?<=[.!?])\\s+");
-            for (int i = 0; i < sentences.length; i += 2) {
-                String partText = StringUtils.join(sentences, ' ', i, Math.min(i + 2, sentences.length));
-                sendMessageFormatted(player, npc, partText);
+            StringBuilder partTextBuilder = new StringBuilder();
+
+            for (String sentence : sentences) {
+                // Check if adding the next sentence would exceed the max message length
+                if (partTextBuilder.length() + sentence.length() + 1 > MAX_MESSAGE_LENGTH) {
+                    // Send the current partText if adding another sentence would exceed the limit
+                    sendMessageFormatted(player, npc, partTextBuilder.toString());
+                    partTextBuilder = new StringBuilder(); // Reset the builder for the next part
+                }
+                if (!partTextBuilder.isEmpty()) partTextBuilder.append(" "); // Add space before the next sentence if not the first sentence
+                partTextBuilder.append(sentence);
+            }
+
+            // Send any remaining text
+            if (!partTextBuilder.isEmpty()) {
+                sendMessageFormatted(player, npc, partTextBuilder.toString());
             }
         } else {
-            // Send the entire response as a single message
-            sendMessageFormatted(player, npc, response);
+            // When not splitting by sentences, ensure splitting by word boundary if needed
+            while (!response.isEmpty()) {
+                if (response.length() <= MAX_MESSAGE_LENGTH) {
+                    // If the remaining response is shorter than the limit, send it all
+                    sendMessageFormatted(player, npc, response);
+                    break;
+                }
+
+                // Find the last space within the MAX_MESSAGE_LENGTH to split the message
+                int lastSpaceIndex = response.lastIndexOf(" ", MAX_MESSAGE_LENGTH);
+                if (lastSpaceIndex == -1) lastSpaceIndex = MAX_MESSAGE_LENGTH; // Fallback if no spaces found
+
+                String part = response.substring(0, lastSpaceIndex).trim();
+                sendMessageFormatted(player, npc, part);
+
+                // Remove the part that was just sent from the response
+                response = response.substring(lastSpaceIndex).trim();
+            }
         }
     }
 
