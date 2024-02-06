@@ -76,12 +76,6 @@ public class ConversationUtils {
         return location == null || !Double.isFinite(location.getX()) || !Double.isFinite(location.getY()) || !Double.isFinite(location.getZ());
     }
 
-    public boolean canComment(NPC npc) {
-        long lastCommentTime = manager.npcCommentCooldown.getOrDefault(npc.getUniqueId(), 0L);
-        long commentCooldown = ArchGPTConstants.GREETING_COOLDOWN_MS;
-        return System.currentTimeMillis() - lastCommentTime > commentCooldown;
-    }
-
     public boolean handleReportingState(Player player, AsyncPlayerChatEvent event) {
         UUID playerUUID = player.getUniqueId();
 

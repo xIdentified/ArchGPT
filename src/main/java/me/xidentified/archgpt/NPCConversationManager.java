@@ -26,7 +26,6 @@ public class NPCConversationManager {
     @Getter private final ConversationUtils conversationUtils;
     @Getter private final ChatRequestHandler chatRequestHandler; //Handles requests sent to ChatGPT
     @Getter private final ConversationTimeoutManager conversationTimeoutManager; //Handles conversation timeout logic
-    public final Map<UUID, Long> npcCommentCooldown = new ConcurrentHashMap<>(); //Stores cooldown for NPC greeting to passing player
     public final Map<UUID, NPC> playerNPCMap = new ConcurrentHashMap<>(); //Stores the NPC the player is talking to
     public final ConcurrentHashMap<UUID, List<JsonObject>> npcChatStatesCache;
     private final ConcurrentHashMap<UUID, Long> playerCooldowns; //Stores if the player is in a cooldown, which would cancel their sent message

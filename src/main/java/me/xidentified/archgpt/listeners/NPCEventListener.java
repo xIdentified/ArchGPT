@@ -3,14 +3,11 @@ package me.xidentified.archgpt.listeners;
 import me.xidentified.archgpt.*;
 import me.xidentified.archgpt.utils.ArchGPTConstants;
 import me.xidentified.archgpt.utils.Messages;
-import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -18,15 +15,12 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.*;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
-// Anything in this class applies to NPCs regardless of server type
 public class NPCEventListener implements Listener {
     private final ArchGPT plugin;
     private final NPCConversationManager conversationManager;
     private final ArchGPTConfig configHandler;
-    private final Set<UUID> npcsProcessingGreeting = ConcurrentHashMap.newKeySet();
-    private final Map<UUID, Long> lastChatTimestamps = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastChatTimestamps = new HashMap<>();
 
     public NPCEventListener(ArchGPT plugin, NPCConversationManager conversationManager, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -101,57 +95,10 @@ public class NPCEventListener implements Listener {
 
             // Process the player's message
             conversationManager.processPlayerMessage(player, playerMessageComponent, hologramManager);
-
             lastChatTimestamps.put(playerUUID, now);
         }
     }
 
-    //Listener for player movement for NPC greetings, and to end conversation if player walks away
-    @EventHandler
-    public void onPlayerGreeting(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-
-        // Check if nearby NPCs want to greet the player
-        double radius = 4.0;
-        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
-            if (!CitizensAPI.getNPCRegistry().isNPC(entity)) {
-                continue;
-            }
-
-            NPC npc = CitizensAPI.getNPCRegistry().getNPC(entity);
-
-            if (npc.isSpawned() && conversationManager.getConversationUtils().isInLineOfSight(npc, player) && conversationManager.getConversationUtils().canComment(npc)) {
-                if (!npcsProcessingGreeting.add(npc.getUniqueId())) {
-                    // This NPC is already processing a greeting, skip to the next NPC
-                    continue;
-                }
-                // Update the cooldown for the NPC
-                conversationManager.npcCommentCooldown.put(npc.getUniqueId(), System.currentTimeMillis());
-
-                // Fetch the prompt from config
-                String prompt = plugin.getConfig().getString("npcs." + npc.getName());
-                if (prompt != null && !prompt.isEmpty()) {
-                    // Get the greeting for the NPC asynchronously
-                    conversationManager.getGreeting(player, npc).thenAccept(greeting -> {
-                        if (greeting != null) {
-                            Bukkit.getScheduler().runTask(plugin, () -> {
-                                // Utilize the sendNPCMessage method to send the greeting
-                                conversationManager.getConversationUtils().sendNPCMessage(player, npc, greeting);
-
-                                // For new players, a hologram appears prompting them to right-click the NPC to interact
-                                if (!player.hasPlayedBefore()) {
-                                    plugin.getHologramManager().showInteractionHologram(npc, player);
-                                }
-
-                                // Mark NPC as processing greeting so this doesn't trigger more than once
-                                npcsProcessingGreeting.remove(npc.getUniqueId());
-                            });
-                        }
-                    });
-                }
-            }
-        }
-    }
 
     @EventHandler
     public void onPlayerLeavesConversation(PlayerMoveEvent event) {
@@ -184,7 +131,6 @@ public class NPCEventListener implements Listener {
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent event) {
         UUID playerUUID = event.getPlayer().getUniqueId();
-        npcsProcessingGreeting.remove(playerUUID);
         plugin.playerSemaphores.remove(playerUUID);
     }
 
