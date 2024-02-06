@@ -14,11 +14,9 @@ public class ArchGPTConstants {
 
     public static final long GREETING_COOLDOWN_MS = 300000; // 5 min default
 
+    public static final int GREETING_RADIUS = 3;
+
     public static final long CHAT_COOLDOWN_MS = 3000;
 
     public static final int MINIMUM_SAVED_SENTENCE_LENGTH = 30;
-
-    public static final double MIN_SIGNIFICANT_DISTANCE_SQUARED = 6;
-
-    public static final long DEBOUNCE_TIME_MS = 1000;
 }
