@@ -14,6 +14,8 @@ public class ArchGPTConstants {
 
     public static final long GREETING_COOLDOWN_MS = 300000; // 5 min default
 
+    public static final long RECENT_GREETING_COOLDOWN_MS = 10000; // This is so multiple greetings don't happen in quick succession
+
     public static final int GREETING_RADIUS = 3;
 
     public static final long CHAT_COOLDOWN_MS = 3000;

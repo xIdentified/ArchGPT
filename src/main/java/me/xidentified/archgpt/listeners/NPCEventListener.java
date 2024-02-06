@@ -19,6 +19,7 @@ import org.bukkit.event.player.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NPCEventListener implements Listener {
     private final ArchGPT plugin;
@@ -26,8 +27,10 @@ public class NPCEventListener implements Listener {
     private final ArchGPTConfig configHandler;
     private final Map<UUID, Long> lastChatTimestamps = new HashMap<>();
 
-    private final Map<UUID, Long> playerGreetingCooldown = new ConcurrentHashMap<>();
-    private final Map<UUID, Boolean> playerGreetedState = new ConcurrentHashMap<>();
+    // Maps each player UUID to a map of NPC UUIDs and their respective last greeting times
+    private final Map<UUID, Map<UUID, Long>> playerNPCGreetingCooldown = new ConcurrentHashMap<>();
+    private final Map<UUID, Map<UUID, Boolean>> playerNPCGreetedState = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> playerLastGreetedTime = new ConcurrentHashMap<>();
 
     public NPCEventListener(ArchGPT plugin, NPCConversationManager conversationManager, ArchGPTConfig configHandler) {
         this.plugin = plugin;
@@ -41,31 +44,54 @@ public class NPCEventListener implements Listener {
         UUID playerUUID = player.getUniqueId();
         long currentTime = System.currentTimeMillis();
 
-        // Check if the player is on cooldown to be greeted (e.g., 5 minutes)
-        if (playerGreetingCooldown.containsKey(playerUUID) &&
-                currentTime - playerGreetingCooldown.get(playerUUID) < ArchGPTConstants.GREETING_COOLDOWN_MS) {
-            return; // Player is on cooldown, no greeting necessary
-        }
-
         Location to = event.getTo();
-
-        // Check for nearby NPCs within a defined radius
         double radius = 5.0; // Example radius
+
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (!CitizensAPI.getNPCRegistry().isNPC(entity)) continue;
             NPC npc = CitizensAPI.getNPCRegistry().getNPC(entity);
+            UUID npcUUID = npc.getUniqueId();
 
-            // Ensure the NPC is spawned and the player hasn't been greeted yet
-            if (npc.isSpawned() && !playerGreetedState.getOrDefault(playerUUID, false)) {
+            // Check if NPC is configured in config
+            if (!isNPCConfigured(npc)) {
+                continue;
+            }
+
+            // Retrieve or initialize the cooldown and greeted state maps for this player
+            Map<UUID, Long> npcCooldowns = playerNPCGreetingCooldown.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>());
+            Map<UUID, Boolean> npcGreetedStates = playerNPCGreetedState.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>());
+
+            // Check if the player has already been greeted by this specific NPC
+            if (npcGreetedStates.getOrDefault(npcUUID, false)) {
+                continue; // Player has already been greeted by this NPC, no further action required
+            }
+
+            // Check if the player is on cooldown to be greeted by this specific NPC
+            if (npcCooldowns.containsKey(npcUUID) && currentTime - npcCooldowns.get(npcUUID) < ArchGPTConstants.GREETING_COOLDOWN_MS) {
+                continue; // Player is on cooldown for this NPC, no greeting necessary
+            }
+
+            // Ensure the NPC is spawned
+            if (npc.isSpawned()) {
+                // Check if the player was recently greeted by any NPC to prevent rapid re-greetings
+                if (wasPlayerRecentlyGreeted(playerUUID)) {
+                    continue; // Player was recently greeted, skip further greetings for now
+                }
+
                 // Optional: Check line of sight if necessary
                 if (conversationManager.getConversationUtils().isInLineOfSight(npc, player)) {
-                    // Greet the player and set the greeted state to true
+                    // Greet the player and update the greeted state and cooldown for this NPC
                     greetPlayer(player, npc);
-                    playerGreetedState.put(playerUUID, true);
-                    playerGreetingCooldown.put(playerUUID, currentTime);
+                    npcGreetedStates.put(npcUUID, true); // Mark the player as greeted by this NPC
+                    npcCooldowns.put(npcUUID, currentTime); // Update cooldown for this NPC
                 }
             }
         }
+    }
+
+    private boolean isNPCConfigured(NPC npc) {
+        String npcConfigPath = "npcs." + npc.getName();
+        return plugin.getConfig().contains(npcConfigPath);
     }
 
     private void greetPlayer(Player player, NPC npc) {
@@ -80,6 +106,13 @@ public class NPCEventListener implements Listener {
                 });
             }
         });
+        playerLastGreetedTime.put(player.getUniqueId(), System.currentTimeMillis());
+    }
+
+    private boolean wasPlayerRecentlyGreeted(UUID playerUUID) {
+        Long lastGreetedTime = playerLastGreetedTime.get(playerUUID);
+        long currentTime = System.currentTimeMillis();
+        return lastGreetedTime != null && (currentTime - lastGreetedTime) < ArchGPTConstants.RECENT_GREETING_COOLDOWN_MS;
     }
 
     @EventHandler
@@ -157,35 +190,38 @@ public class NPCEventListener implements Listener {
     public void onPlayerLeavesConversation(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         UUID playerUUID = player.getUniqueId();
-        NPC npc = conversationManager.playerNPCMap.get(playerUUID);
         Location to = event.getTo();
+        AtomicBoolean conversationEnded = new AtomicBoolean(false);
+        long currentTime = System.currentTimeMillis();
 
-        // Check if the player is in an active conversation
-        if (!this.plugin.getActiveConversations().containsKey(playerUUID)) {
-            // Also check if the player was previously greeted by an NPC and has moved away
-            if (playerGreetedState.getOrDefault(playerUUID, false)) {
-                // Assuming ArchGPTConstants.GREETING_RADIUS is the radius within which greetings occur
-                if (npc != null && npc.isSpawned() && to.distance(npc.getEntity().getLocation()) > ArchGPTConstants.GREETING_RADIUS) {
-                    playerGreetedState.put(playerUUID, false); // Reset the greeted state
+        // Retrieve the player's cooldown map and greeted state map for NPCs
+        Map<UUID, Long> npcCooldowns = playerNPCGreetingCooldown.get(playerUUID);
+        Map<UUID, Boolean> npcGreetedStates = playerNPCGreetedState.get(playerUUID);
+
+        if (npcCooldowns != null && npcGreetedStates != null) {
+            npcCooldowns.keySet().forEach(npcUUID -> {
+                NPC npc = CitizensAPI.getNPCRegistry().getByUniqueId(npcUUID);
+                if (npc != null && npc.isSpawned() && npcGreetedStates.getOrDefault(npcUUID, false)) {
+                    double distance = to.distance(npc.getEntity().getLocation());
+                    if (distance > ArchGPTConstants.GREETING_RADIUS) {
+                        // Player has definitively moved away from this NPC, reset cooldown and greeted state
+                        npcCooldowns.put(npcUUID, currentTime);  // start cooldown
+                        npcGreetedStates.put(npcUUID, false);
+                    }
                 }
-            }
-            return;
+            });
         }
 
-        // Handle world change
-        if (player.getWorld() != npc.getEntity().getWorld()) {
+        // Perform actions based on conditions checked inside the lambda
+        if (conversationEnded.get()) {
             conversationManager.endConversation(playerUUID);
-            plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
+            plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
         } else {
-            // Check if player strayed too far from the NPC
-            if (npc.isSpawned()) {
-                double distance = to.distance(npc.getEntity().getLocation());
-                if (distance > ArchGPTConstants.MAX_DISTANCE_FROM_NPC) {
-                    conversationManager.endConversation(playerUUID);
-                    plugin.sendMessage(player, Messages.CONVERSATION_ENDED_WALKED_AWAY);
-                    // Reset the greeted state as the player has walked away from the NPC
-                    playerGreetedState.put(playerUUID, false);
-                }
+            // Handle world change for the NPC player was having a conversation with, if any
+            NPC npc = conversationManager.playerNPCMap.get(playerUUID);
+            if (npc != null && player.getWorld() != npc.getEntity().getWorld()) {
+                conversationManager.endConversation(playerUUID);
+                plugin.sendMessage(player, Messages.CONVERSATION_ENDED_CHANGED_WORLDS);
             }
         }
     }
@@ -193,6 +229,7 @@ public class NPCEventListener implements Listener {
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent event) {
         UUID playerUUID = event.getPlayer().getUniqueId();
+        playerNPCGreetingCooldown.remove(playerUUID);
         plugin.playerSemaphores.remove(playerUUID);
     }
 
