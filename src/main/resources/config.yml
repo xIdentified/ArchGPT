@@ -13,6 +13,8 @@ response_timeout: 60000
 min_char_length: 10
 # Cooldown duration in milliseconds (e.g., 3000 milliseconds = 3 seconds)
 chat_cooldown: 3000
+# Words you don't want to let players send to the NPCs
+filtered-words: "slur, somethingbad"
 
 # The default prompt your ChatGPT responses will be based off of. What's set here will apply to all NPCs.
 # Useful for setting context like, "this server has custom enchantments" or "you can claim land by xyz"

@@ -32,6 +32,9 @@ public class Messages {
             .withPlaceholder("npc")
             .withPlaceholder("message")
             .build();
+    public static final Message INAPPROPRIATE_LANGUAGE = new MessageBuilder("general.inappropriate_language")
+            .withDefault("<prefix_negative>You are not allowed to say that!")
+            .build();
     // Conversation
     public static final Message CONVERSATION_STARTED = new MessageBuilder("conversation.started")
             .withDefault("<yellow>Conversation started with {npc:name}. Type '{cancel}' to exit.")

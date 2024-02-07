@@ -19,7 +19,6 @@ import org.bukkit.event.player.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NPCEventListener implements Listener {
     private final ArchGPT plugin;
@@ -147,10 +146,9 @@ public class NPCEventListener implements Listener {
         synchronized (conversationManager.npcChatStatesCache) {
             Player player = event.getPlayer();
             UUID playerUUID = player.getUniqueId();
-            String message = event.getMessage();
+            String message = event.getMessage().toLowerCase();
 
-            Component playerMessageComponent = Component.text(message);
-            HologramManager hologramManager = new HologramManager(plugin);
+            // Check for cooldown
             long now = System.currentTimeMillis();
             long lastChatTimestamp = lastChatTimestamps.getOrDefault(playerUUID, 0L);
 
@@ -159,6 +157,15 @@ public class NPCEventListener implements Listener {
                 plugin.sendMessage(player, Messages.GENERAL_CHAT_COOLDOWN);
                 event.setCancelled(true);
                 return;
+            }
+
+            // Check for bad words, u a real baddie <3
+            for (String word : configHandler.getFilteredWords()) {
+                if (message.contains(word.toLowerCase())) {
+                    plugin.sendMessage(player, Messages.INAPPROPRIATE_LANGUAGE);
+                    event.setCancelled(true);
+                    return;
+                }
             }
 
             // Check if player is already in conversation
@@ -172,6 +179,9 @@ public class NPCEventListener implements Listener {
             if (conversationManager.getConversationUtils().handleReportingState(player, event)) {
                 return;
             }
+
+            Component playerMessageComponent = Component.text(message);
+            HologramManager hologramManager = new HologramManager(plugin);
 
             // If the player types 'cancel', end the conversation
             if (conversationManager.handleCancelCommand(player, PlainTextComponentSerializer.plainText().serialize(playerMessageComponent))) {
