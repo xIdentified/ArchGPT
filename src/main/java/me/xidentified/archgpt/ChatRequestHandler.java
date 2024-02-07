@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ChatRequestHandler {
     private final ArchGPT plugin;
@@ -123,13 +125,40 @@ public class ChatRequestHandler {
         if (responseObject.has("choices") && !responseObject.getAsJsonArray("choices").isEmpty()) {
             JsonObject choice = responseObject.getAsJsonArray("choices").get(0).getAsJsonObject();
             if (choice.has("message") && choice.getAsJsonObject("message").has("content")) {
-                return choice.getAsJsonObject("message").get("content").getAsString().trim();
+                String response = choice.getAsJsonObject("message").get("content").getAsString().trim();
+                return trimToLastCompleteSentence(response);
             }
         }
         plugin.getLogger().warning("Invalid response structure from ChatGPT API");
         plugin.debugLog("ChatGPT API response object: " + responseObject);
         return "";
     }
+
+    /**
+     * Trims the response to include only complete sentences by finding the last punctuation mark.
+     * @param response The full response from the API.
+     * @return The trimmed response containing only complete sentences.
+     */
+    private String trimToLastCompleteSentence(String response) {
+        // Regular expression to find the last sentence ending punctuation followed by a space or the end of the string.
+        Pattern pattern = Pattern.compile("[.!?](?=\\s|$)");
+        Matcher matcher = pattern.matcher(response);
+
+        // Find the position of the last sentence-ending punctuation mark.
+        int lastPunctuationPos = -1;
+        while (matcher.find()) {
+            lastPunctuationPos = matcher.end();
+        }
+
+        // If a punctuation mark was found, trim the response to the last complete sentence.
+        if (lastPunctuationPos != -1) {
+            return response.substring(0, lastPunctuationPos);
+        }
+
+        // If no sentence-ending punctuation was found, return the original response.
+        return response;
+    }
+
 
     private HttpRequest buildHttpRequest(String jsonRequestBody) {
         String apiKey = plugin.getConfigHandler().getOpenAiApiKey();

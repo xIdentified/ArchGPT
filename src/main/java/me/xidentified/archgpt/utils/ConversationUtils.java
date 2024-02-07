@@ -39,9 +39,8 @@ public class ConversationUtils {
         PlayerContextProvider playerContext = new PlayerContextProvider(player);
         String environmentalContext = envContext.getFormattedContext(npcPrompt);
         String playerSpecificContext = playerContext.getFormattedContext("");
-        String tokenContext = "Be concise in your replies and use no more than " + configHandler.getMaxResponseLength() + " completion_tokens in each response.";
 
-        return environmentalContext + " " + playerSpecificContext + " " + tokenContext;
+        return environmentalContext + " " + playerSpecificContext;
     }
 
     public boolean isInLineOfSight(NPC npc, Player player) {
