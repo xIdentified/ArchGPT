@@ -79,7 +79,7 @@ public class NPCEventListener implements Listener {
                 }
 
                 // Optional: Check line of sight if necessary
-                if (conversationManager.getConversationUtils().isInLineOfSight(npc, player)) {
+                if (conversationManager.getConversationUtils().isInLineOfSight(npc, player) && !conversationManager.playerInConversation(playerUUID)) {
                     // Greet the player and update the greeted state and cooldown for this NPC
                     greetPlayer(player, npc);
                     npcGreetedStates.put(npcUUID, true); // Mark the player as greeted by this NPC

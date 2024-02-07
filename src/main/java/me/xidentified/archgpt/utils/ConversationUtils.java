@@ -115,7 +115,7 @@ public class ConversationUtils {
 
     public void sendNPCMessage(Player player, NPC npc, String response) {
         boolean splitLongMessages = configHandler.isShouldSplitLongMsg();
-        int MAX_MESSAGE_LENGTH = 256; // Maximum characters a Minecraft chat message can hold
+        int MAX_MESSAGE_LENGTH = 256;
 
         if (splitLongMessages) {
             // Split the response into sentences
@@ -160,7 +160,8 @@ public class ConversationUtils {
     }
 
     private void sendMessageFormatted(Player player, NPC npc, String message) {
-        // Prepare and send formatted NPC message
+        npc.data().set("last_message", message);
+
         plugin.sendMessage(player, Messages.GENERAL_NPC_MESSAGE
                 .insertObject("npc", npc)
                 .insertString("message", message));
