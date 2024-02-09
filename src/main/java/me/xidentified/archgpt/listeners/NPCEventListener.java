@@ -6,6 +6,7 @@ import me.xidentified.archgpt.utils.Messages;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.npc.NPC;
+import net.citizensnpcs.trait.CommandTrait;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
@@ -120,6 +121,12 @@ public class NPCEventListener implements Listener {
             Player player = event.getClicker();
             NPC npc = event.getNPC();
 
+            // Return if the NPC has a command assigned
+            if (npc.hasTrait(CommandTrait.class)) {
+                 plugin.debugLog("NPC '" + npc.getName() + "' has commands assigned in Citizens. Bypassing custom interact handler.");
+                 return;
+            }
+
             // Check if the NPC is configured in config.yml
             String npcPrompt = configHandler.getNpcPrompt(npc.getName(), player);
             if (npcPrompt == null || npcPrompt.isEmpty()) {
@@ -163,6 +170,7 @@ public class NPCEventListener implements Listener {
             for (String word : configHandler.getFilteredWords()) {
                 if (message.contains(word.toLowerCase())) {
                     plugin.sendMessage(player, Messages.INAPPROPRIATE_LANGUAGE);
+                    lastChatTimestamps.put(playerUUID, now);
                     event.setCancelled(true);
                     return;
                 }

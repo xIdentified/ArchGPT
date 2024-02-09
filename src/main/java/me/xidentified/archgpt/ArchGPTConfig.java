@@ -78,7 +78,7 @@ public class ArchGPTConfig {
         FileConfiguration config = plugin.getConfig();
 
         // Check if the NPC is specifically configured in config.yml
-        if (!config.contains("npcs." + npcName)) {
+        if (!config.contains("npcs" + npcName)) {
             return null;  // Return null if the NPC is not configured
         }
 

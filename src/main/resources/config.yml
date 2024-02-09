@@ -21,7 +21,9 @@ filtered-words: "slur, somethingbad"
 # Be mindful of how long this is, as it will be sent to the API each time.
 default_prompt: "You live in a server called CarrotCraft. You like to eat carrots. Mmm, carrots."
 
-# Replace 'npc_name' with the name of the NPC (as used in Citizens) and place your prompt in quotes.
+# Here's where you'll configure NPC prompts and commands.
+# NPCs that have commands will run the command when interacted with instead of starting a conversation.
+# Either way, they will still greet the player based on their prompt.
 npcs:
   npc_name: "This is an example prompt for the NPC."
 

@@ -78,21 +78,18 @@ public class Messages {
 
     // Admin
     public static final Message CMD_USAGE = new MessageBuilder("archgpt.usage")
-            .withDefault("<prefix>Usage: <cmd_syntax>/archgpt <arg>argument</arg></cmd_syntax>")
+            .withDefault("<prefix>Usage: <cmd_syntax>/archgpt argument</cmd_syntax>")
             .build();
     public static final Message BROADCAST_CMD_USAGE = new MessageBuilder("archgpt.usage")
-            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt broadcast <arg>npcName</arg> <arg>message</arg></cmd_syntax>")
+            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt broadcast npcName message</cmd_syntax>")
             .build();
     public static final Message SETNPC_CMD_USAGE = new MessageBuilder("archgpt.setnpc-usage")
-            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt setnpc <arg>npcname</arg> <arg>prompt</arg></cmd_syntax>")
+            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt setnpc npcname prompt</cmd_syntax>")
             .build();
     public static final Message RESETMEMORY_CMD_USAGE = new MessageBuilder("archgpt.resetnpc-usage")
-            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt reset-npc-memory <arg>npcName</arg></cmd_syntax>")
+            .withDefault("<prefix_warning>Usage: <cmd_syntax>/archgpt reset-npc-memory npcName</cmd_syntax>")
             .build();
 
-    public static final Message CLOUD_NOT_CONFIGURED = new MessageBuilder("archgpt.cloud-not-configured")
-            .withDefault("<prefix_warning>Google NLP is enabled, but google-cloud-key.json is not set up! Configure the file in your storage folder and restart the server.")
-            .build();
     public static final Message RELOAD_SUCCESS = new MessageBuilder("archgpt.reload")
             .withDefault("<prefix>ArchGPT successfully reloaded!")
             .build();
@@ -101,7 +98,7 @@ public class Messages {
             .withPlaceholder("toggle")
             .build();
     public static final Message VERSION_INFO = new MessageBuilder("archgpt.version")
-            .withDefault("<prefix_warning>Server version: <gray>{server-ver}</gray>\nArchGPT version: <gray>{plugin-ver}</gray>\nJava version: <gray>{java-ver}</gray>")
+            .withDefault("<prefix_warning>Server version: <gray>{server-ver}</gray><newline>ArchGPT version: <gray>{plugin-ver}</gray><newline>Java version: <gray>{java-ver}</gray>")
             .withPlaceholder("server-ver")
             .withPlaceholder("plugin-ver")
             .withPlaceholder("java-ver")
