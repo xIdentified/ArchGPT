@@ -1,8 +1,8 @@
 package me.xidentified.archgpt.context;
 
 import com.google.gson.JsonObject;
-import me.xidentified.archgpt.context.EnvironmentalContextProvider;
-import me.xidentified.archgpt.context.PlayerContextProvider;
+import me.xidentified.archgpt.ArchGPT;
+import me.xidentified.archgpt.ChatRequestHandler;
 import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.entity.Player;
 
@@ -32,11 +32,13 @@ public class ContextManager {
             
             // Add environmental context
             EnvironmentalContextProvider envProvider = new EnvironmentalContextProvider(plugin, player);
-            context.addProperty("environment", envProvider.getFormattedContext(""));
+            String envContext = envProvider.getFormattedContext("");
+            context.addProperty("environment", envContext != null ? envContext : "");
             
             // Add player context
             PlayerContextProvider playerProvider = new PlayerContextProvider(player);
-            context.addProperty("player", playerProvider.getFormattedContext(""));
+            String playerContext = playerProvider.getFormattedContext("");
+            context.addProperty("player", playerContext != null ? playerContext : "");
             
             // Add NPC context
             context.addProperty("npc", npc.getName());
@@ -69,5 +71,29 @@ public class ContextManager {
     public void clearPlayerContext(UUID playerUUID) {
         playerContextCache.remove(playerUUID);
         lastContextUpdate.remove(playerUUID);
+        plugin.debugLog("Cleared context for player: " + playerUUID);
+    }
+    
+    public void clearAllContexts() {
+        int clearedCount = playerContextCache.size();
+        playerContextCache.clear();
+        lastContextUpdate.clear();
+        plugin.debugLog("Cleared all contexts. Removed " + clearedCount + " player contexts.");
+    }
+    
+    // Optional: Add a method to periodically clean up contexts for offline players
+    public void cleanupInactiveContexts() {
+        long currentTime = System.currentTimeMillis();
+        long inactivityThreshold = 3600000; // 1 hour
+        
+        playerContextCache.keySet().removeIf(playerUUID -> {
+            Long lastUpdate = lastContextUpdate.get(playerUUID);
+            if (lastUpdate != null && currentTime - lastUpdate > inactivityThreshold) {
+                lastContextUpdate.remove(playerUUID);
+                plugin.debugLog("Removed inactive context for player: " + playerUUID);
+                return true;
+            }
+            return false;
+        });
     }
 }

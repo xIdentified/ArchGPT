@@ -9,6 +9,8 @@ import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import com.google.gson.JsonObject;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -64,34 +66,70 @@ public class NPCConversationManager {
     }
 
     public CompletableFuture<String> getGreeting(Player player, NPC npc) {
-        // Prepare the API request
-        JsonObject requestBodyJson = new JsonObject();
-        String chatGptEngine = configHandler.getChatGptEngine();
-        requestBodyJson.addProperty("model", chatGptEngine);
-        requestBodyJson.addProperty("max_tokens", configHandler.getMaxResponseLength());
-
-        // Create messages array
-        JsonArray messages = new JsonArray();
-
-        // Add system prompt message
-        JsonObject systemMessage = createSystemMessage(npc, player);
-        messages.add(systemMessage);
-
-        // Get combined context for the NPC with the specific greeting
-        String combinedContext = conversationUtils.getCombinedContext(npc.getName(), player);
-        String greetingContext = combinedContext + " A player known as " + player.getName() + " approaches you. " +
+        // Use the new MCP approach instead of building the request manually
+        String greetingPrompt = "A player known as " + player.getName() + " approaches you. " +
                 "Give them a greeting consisting of 40 completion_tokens or less.";
+        
+        return getChatRequestHandler().processMCPRequest(
+            player, npc, greetingPrompt, 
+            ChatRequestHandler.RequestType.GREETING, 
+            null
+        ).thenApply(responseObject -> (String) responseObject);
+    }
 
-        // Add user prompt message with combined context
-        JsonObject userMessage = new JsonObject();
-        userMessage.addProperty("role", "user");
-        userMessage.addProperty("content", greetingContext);
-        messages.add(userMessage);
+    public void processPlayerMessage(Player player, Component playerMessage, HologramManager hologramManager) {
+        // This method should only be called from the main thread
+        if (!Bukkit.isPrimaryThread()) {
+            plugin.getLogger().warning("processPlayerMessage called from async thread! Scheduling on main thread.");
+            Bukkit.getScheduler().runTask(plugin, () -> processPlayerMessage(player, playerMessage, hologramManager));
+            return;
+        }
+        
+        UUID playerUUID = player.getUniqueId();
+        NPC npc = playerNPCMap.get(playerUUID);
 
-        // Add messages to the request body and process the request
-        requestBodyJson.add("messages", messages);
-        return getChatRequestHandler().processChatGPTRequest(player, requestBodyJson, ChatRequestHandler.RequestType.GREETING, null, null)
-                .thenApply(responseObject -> (String) responseObject);
+        // Check if player message is too short
+        if (PlainTextComponentSerializer.plainText().serialize(playerMessage).length() < configHandler.getMinCharLength()) {
+            plugin.sendMessage(player, Messages.MSG_TOO_SHORT.insertNumber("size", configHandler.getMinCharLength()));
+            return;
+        }
+
+        // Send player message
+        conversationUtils.sendPlayerMessage(player, playerMessage);
+
+        // Start animation over NPC head while it processes response
+        displayHologramOverNPC(playerUUID, npc, hologramManager);
+
+        // Cooldown logic
+        long currentTimeMillis = System.currentTimeMillis();
+        if (playerCooldowns.containsKey(playerUUID)) {
+            long lastTriggerTimeMillis = playerCooldowns.get(playerUUID);
+            long cooldownMillis = configHandler.getChatCooldownMillis();
+            if (currentTimeMillis - lastTriggerTimeMillis < cooldownMillis) {
+                return;
+            }
+        }
+        playerCooldowns.put(playerUUID, currentTimeMillis);
+
+        // Process chat request
+        List<JsonObject> conversationState = npcChatStatesCache.get(playerUUID);
+        String playerMessageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
+
+        // Handle summary of past conversations if needed
+        String conversationSummary = memoryContext.getConversationSummary(playerMessage, playerUUID, npc.getName());
+        if (conversationSummary != null) {
+            // Update context with conversation summary
+            plugin.getContextManager().updateContextElement(player, "conversation_summary", conversationSummary);
+        }
+
+        // Send the request and process the response using the new MCP approach
+        CompletableFuture<Object> future = getChatRequestHandler().processMCPRequest(
+            player, npc, playerMessageText, 
+            ChatRequestHandler.RequestType.CONVERSATION, 
+            conversationState
+        );
+        
+        processNpcResponse(future, player, npc, hologramManager);
     }
 
     public void startConversation(Player player, NPC npc) {
@@ -139,75 +177,6 @@ public class NPCConversationManager {
             return true;
         }
         return false;
-    }
-
-    public void processPlayerMessage(Player player, Component playerMessage, HologramManager hologramManager) {
-        UUID playerUUID = player.getUniqueId();
-        NPC npc = playerNPCMap.get(playerUUID);
-
-        // Check if player message is too short
-        if (PlainTextComponentSerializer.plainText().serialize(playerMessage).length() < configHandler.getMinCharLength()) {
-            plugin.sendMessage(player, Messages.MSG_TOO_SHORT.insertNumber("size", configHandler.getMinCharLength()));
-            return;
-        }
-
-        // Send player message
-        conversationUtils.sendPlayerMessage(player, playerMessage);
-
-        // Start animation over NPC head while it processes response
-        displayHologramOverNPC(playerUUID, npc, hologramManager);
-
-        // Cooldown logic
-        long currentTimeMillis = System.currentTimeMillis();
-        if (playerCooldowns.containsKey(playerUUID)) {
-            long lastTriggerTimeMillis = playerCooldowns.get(playerUUID);
-            long cooldownMillis = configHandler.getChatCooldownMillis();
-            if (currentTimeMillis - lastTriggerTimeMillis < cooldownMillis) {
-                return;
-            }
-        }
-        playerCooldowns.put(playerUUID, currentTimeMillis);
-
-        // Process chat request
-        List<JsonObject> conversationState = npcChatStatesCache.get(playerUUID);
-        String playerMessageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
-
-        // Handle summary of past conversations if needed
-        String conversationSummary = memoryContext.getConversationSummary(playerMessage, playerUUID, npc.getName());
-        if (conversationSummary != null) {
-            // Update context with conversation summary
-            plugin.getContextManager().updateContextElement(player, "conversation_summary", conversationSummary);
-        }
-
-        // Build MCP request using the new approach
-        JsonObject mcpRequest = chatRequestHandler.buildMCPRequest(
-            plugin.getContextManager().getOrganizedContext(player, npc, ChatRequestHandler.RequestType.CONVERSATION),
-            playerMessageText,
-            conversationState,
-            ChatRequestHandler.RequestType.CONVERSATION
-        );
-
-        // Send the request and process the response
-        CompletableFuture<Object> future = getChatRequestHandler().processMCPRequest(
-            player, npc, playerMessageText, 
-            ChatRequestHandler.RequestType.CONVERSATION, 
-            conversationState
-        );
-        
-        processNpcResponse(future, player, npc, hologramManager);
-    }
-
-    private void displayHologramOverNPC(UUID playerUUID, NPC npc, HologramManager hologramManager) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (npc == null || !npc.isSpawned()) return;
-                hologramManager.removePlayerHologram(playerUUID);
-                Location npcLocation = npc.getEntity().getLocation();
-                hologramManager.createHologram(playerUUID, npcLocation.add(0, 1, 0), "...");
-                hologramManager.animateHologram();
-            }
-        }.runTask(plugin);
     }
 
     private void displayHologramOverNPC(UUID playerUUID, NPC npc, HologramManager hologramManager) {

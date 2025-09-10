@@ -3,8 +3,11 @@ package me.xidentified.archgpt;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import me.xidentified.archgpt.context.ContextManager;
 import me.xidentified.archgpt.utils.ArchGPTConstants;
 import me.xidentified.archgpt.utils.LocaleUtils;
+import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
@@ -35,68 +38,81 @@ public class ChatRequestHandler {
     }
 
     public CompletableFuture<Object> processMCPRequest(Player player, NPC npc, String message, 
-                                                     RequestType requestType, List<JsonObject> conversationState) {
+                                                    RequestType requestType, List<JsonObject> conversationState) {
         UUID playerUUID = player.getUniqueId();
-        plugin.playerSemaphores.putIfAbsent(playerUUID, new Semaphore(1));
-
-        return CompletableFuture.supplyAsync(() -> {
+        
+        // Use a CompletableFuture to handle the async operation
+        CompletableFuture<JsonObject> contextFuture = new CompletableFuture<>();
+        
+        // Schedule context gathering on the main thread
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
             try {
-                // Acquire the semaphore for this specific player
-                Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
-                semaphore.acquire();
-
-                // Get organized context
                 JsonObject context = contextManager.getOrganizedContext(player, npc, requestType);
-                
-                // Build MCP request
-                JsonObject mcpRequest = buildMCPRequest(context, message, conversationState, requestType);
-                plugin.debugLog("MCP Request: " + mcpRequest.toString());
-
-                // Send to MCP server
-                HttpRequest request = buildMCPHttpRequest(mcpRequest.toString());
-                HttpResponse<String> response = plugin.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-                
-                int statusCode = response.statusCode();
-                plugin.debugLog("Received response from MCP server, Status Code: " + statusCode);
-
-                if (statusCode == 200) {
-                    String jsonResponse = response.body();
-                    JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
-                    return extractAssistantResponseText(responseObject);
-                } else {
-                    plugin.getLogger().severe("MCP Server Error: Status Code " + statusCode + " - " + response.body());
-                    throw new RuntimeException("MCP Server Error: Status Code " + statusCode);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Thread was interrupted: " + e.getMessage());
-            } catch (IOException | RuntimeException e) {
-                plugin.getLogger().severe("MCP Request Failed: " + e.getMessage());
-                throw new RuntimeException("MCP Request Failed: " + e.getMessage());
-            } finally {
-                // Ensure the semaphore is released for this player
-                Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
-                if (semaphore != null) {
-                    semaphore.release();
-                }
+                contextFuture.complete(context);
+            } catch (Exception e) {
+                contextFuture.completeExceptionally(e);
             }
-        }).thenCompose(assistantResponseText -> {
-            // Check if translation is needed
-            String playerLocale = LocaleUtils.getPlayerLocale(player);
-            plugin.debugLog("Player locale read as: " + playerLocale);
-            if (!playerLocale.substring(0, 2).equalsIgnoreCase("en")) {
-                String targetLang = playerLocale.substring(0, 2);
-                return plugin.getTranslationService().translateText(assistantResponseText, targetLang)
-                        .thenApply(translatedText -> translatedText != null ? translatedText : assistantResponseText);
-            }
-            plugin.debugLog("Final Processed Response: " + assistantResponseText);
-            return CompletableFuture.completedFuture(assistantResponseText);
+        });
 
-        }).exceptionally(ex -> {
-            // Handle exceptions - log the error and end the conversation
-            plugin.getLogger().severe("Error processing MCP request: " + ex.getMessage());
-            plugin.getConversationManager().endConversation(playerUUID);
-            return null;
+        return contextFuture.thenCompose(context -> {
+            plugin.playerSemaphores.putIfAbsent(playerUUID, new Semaphore(1));
+
+            return CompletableFuture.supplyAsync(() -> {
+                try {
+                    // Acquire the semaphore for this specific player
+                    Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
+                    semaphore.acquire();
+                    
+                    // Build MCP request using the context gathered on the main thread
+                    JsonObject mcpRequest = buildMCPRequest(context, message, conversationState, requestType);
+                    plugin.debugLog("MCP Request: " + mcpRequest.toString());
+
+                    // Send to MCP server
+                    HttpRequest request = buildMCPHttpRequest(mcpRequest.toString());
+                    HttpResponse<String> response = plugin.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+                    
+                    int statusCode = response.statusCode();
+                    plugin.debugLog("Received response from MCP server, Status Code: " + statusCode);
+
+                    if (statusCode == 200) {
+                        String jsonResponse = response.body();
+                        JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
+                        return extractAssistantResponseText(responseObject);
+                    } else {
+                        plugin.getLogger().severe("MCP Server Error: Status Code " + statusCode + " - " + response.body());
+                        throw new RuntimeException("MCP Server Error: Status Code " + statusCode);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Thread was interrupted: " + e.getMessage());
+                } catch (IOException | RuntimeException e) {
+                    plugin.getLogger().severe("MCP Request Failed: " + e.getMessage());
+                    throw new RuntimeException("MCP Request Failed: " + e.getMessage());
+                } finally {
+                    // Ensure the semaphore is released for this player
+                    Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
+                    if (semaphore != null) {
+                        semaphore.release();
+                    }
+                }
+            }).thenCompose(assistantResponseText -> {
+                // Check if translation is needed
+                String playerLocale = LocaleUtils.getPlayerLocale(player);
+                plugin.debugLog("Player locale read as: " + playerLocale);
+                if (!playerLocale.substring(0, 2).equalsIgnoreCase("en")) {
+                    String targetLang = playerLocale.substring(0, 2);
+                    return plugin.getTranslationService().translateText(assistantResponseText, targetLang)
+                            .thenApply(translatedText -> translatedText != null ? translatedText : assistantResponseText);
+                }
+                plugin.debugLog("Final Processed Response: " + assistantResponseText);
+                return CompletableFuture.completedFuture(assistantResponseText);
+
+            }).exceptionally(ex -> {
+                // Handle exceptions - log the error and end the conversation
+                plugin.getLogger().severe("Error processing MCP request: " + ex.getMessage());
+                plugin.getConversationManager().endConversation(playerUUID);
+                return null;
+            });
         }).thenApply(assistantResponseText -> {
             // Process the response and prepare final result
             String response = assistantResponseText.trim();
@@ -148,10 +164,10 @@ public class ChatRequestHandler {
         // Add request type
         mcpRequest.addProperty("request_type", requestType.name());
         
-        // Add provider information from config
-        mcpRequest.addProperty("provider", plugin.getConfig().getString("mcp.provider", "openai"));
-        mcpRequest.addProperty("model", plugin.getConfig().getString("mcp.model", "gpt-3.5-turbo"));
-        mcpRequest.addProperty("max_tokens", plugin.getConfig().getInt("mcp.max_tokens", 200));
+        // Add provider information from config using the config handler
+        mcpRequest.addProperty("provider", plugin.getConfigHandler().getMcpProvider());
+        mcpRequest.addProperty("model", plugin.getConfigHandler().getMcpModel());
+        mcpRequest.addProperty("max_tokens", plugin.getConfigHandler().getMcpMaxTokens());
         
         return mcpRequest;
     }
@@ -166,7 +182,8 @@ public class ChatRequestHandler {
     }
 
     private HttpRequest buildMCPHttpRequest(String jsonRequestBody) {
-        String mcpServerUrl = plugin.getConfig().getString("mcp.server_url", "http://localhost:3000/query");
+        // Use the config handler to get the MCP server URL
+        String mcpServerUrl = plugin.getConfigHandler().getMcpServerUrl();
         URI uri = URI.create(mcpServerUrl);
 
         return HttpRequest.newBuilder()

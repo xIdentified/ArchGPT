@@ -6,7 +6,7 @@ import de.cubbossa.tinytranslations.Translator;
 import de.cubbossa.tinytranslations.persistent.YamlMessageStorage;
 import de.cubbossa.tinytranslations.persistent.YamlStyleStorage;
 import lombok.Getter;
-import main.java.me.xidentified.archgpt.context.ContextManager;
+import me.xidentified.archgpt.context.ContextManager;
 import me.xidentified.archgpt.commands.AdminReportCommandExecutor;
 import me.xidentified.archgpt.commands.ArchGPTCommand;
 import me.xidentified.archgpt.commands.ReportTypeCommandExecutor;
@@ -56,6 +56,7 @@ public class ArchGPT extends JavaPlugin {
 
     // Managers
     private ArchGPTConfig configHandler;
+    private ContextManager contextManager;
     private HologramManager hologramManager;
     private ReportManager reportManager;
     private TranslationService translationService;

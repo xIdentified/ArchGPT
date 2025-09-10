@@ -236,9 +236,11 @@ public class EnvironmentalContextProvider {
             return "a lot of";
         }
     }
-    public String getBiome() {
-        Biome biome = player.getLocation().getBlock().getBiome();
 
+    public String getBiome() {
+    Biome biome = player.getLocation().getBlock().getBiome();
+    
+    try {
         return switch (biome) {
             case BADLANDS -> "a rugged terrain of red sand and terracotta, where the sun beats down mercilessly";
             case BAMBOO_JUNGLE -> "a lush jungle thick with towering bamboo stalks, teeming with life";
@@ -269,25 +271,48 @@ public class EnvironmentalContextProvider {
             case WINDSWEPT_SAVANNA -> "a windswept savanna, where hardy trees and grasses withstand the gusty breezes";
             case WOODED_BADLANDS -> "wooded badlands, where stark terrain is broken by patches of forest";
             case THE_VOID -> "the Void, an empty expanse stretching into the unknown";
-            case DRIPSTONE_CAVES ->
-                    "dripstone caves, where stalactites and stalagmites create a striking underground landscape";
-            case LUSH_CAVES -> "lush caves, a hidden world of vibrant flora and flowing waterfalls";
-            case DEEP_DARK -> "the deep dark, a realm of shadows and forgotten secrets";
-            case MEADOW -> "a serene meadow, blanketed with wildflowers and the hum of bees";
-            case GROVE -> "a tranquil grove, where light filters softly through the leaves";
-            case SNOWY_SLOPES -> "snowy slopes, a crisp and icy terrain that sparkles under the sun";
-            case FROZEN_PEAKS -> "frozen peaks, where the air is thin and the snow never melts";
-            case JAGGED_PEAKS -> "jagged peaks, a treacherous and rugged mountain range";
-            case STONY_PEAKS -> "stony peaks, where bare rock faces tower over the landscape";
-            case MANGROVE_SWAMP -> "a mangrove swamp, tangled with roots and teeming with life";
-            case DEEP_LUKEWARM_OCEAN -> "the deep lukewarm ocean, its waters hiding a world of aquatic wonders";
-            case DEEP_COLD_OCEAN -> "the deep cold ocean, a chilly expanse home to hardy marine creatures";
-            case DEEP_FROZEN_OCEAN -> "the deep frozen ocean, where icebergs float on the icy surface";
-            // Any additional biomes introduced in future updates
-            default -> "an uncharted realm, its secrets yet to be revealed";
+            
+            // Handle newer biomes with explicit checks to avoid switch table issues
+            default -> {
+                // Use reflection to handle newer biomes that might not be in the switch table
+                String biomeName = biome.name();
+                if (biomeName.equals("DRIPSTONE_CAVES")) {
+                    yield "dripstone caves, where stalactites and stalagmites create a striking underground landscape";
+                } else if (biomeName.equals("LUSH_CAVES")) {
+                    yield "lush caves, a hidden world of vibrant flora and flowing waterfalls";
+                } else if (biomeName.equals("DEEP_DARK")) {
+                    yield "the deep dark, a realm of shadows and forgotten secrets";
+                } else if (biomeName.equals("MEADOW")) {
+                    yield "a serene meadow, blanketed with wildflowers and the hum of bees";
+                } else if (biomeName.equals("GROVE")) {
+                    yield "a tranquil grove, where light filters softly through the leaves";
+                } else if (biomeName.equals("SNOWY_SLOPES")) {
+                    yield "snowy slopes, a crisp and icy terrain that sparkles under the sun";
+                } else if (biomeName.equals("FROZEN_PEAKS")) {
+                    yield "frozen peaks, where the air is thin and the snow never melts";
+                } else if (biomeName.equals("JAGGED_PEAKS")) {
+                    yield "jagged peaks, a treacherous and rugged mountain range";
+                } else if (biomeName.equals("STONY_PEAKS")) {
+                    yield "stony peaks, where bare rock faces tower over the landscape";
+                } else if (biomeName.equals("MANGROVE_SWAMP")) {
+                    yield "a mangrove swamp, tangled with roots and teeming with life";
+                } else if (biomeName.equals("DEEP_LUKEWARM_OCEAN")) {
+                    yield "the deep lukewarm ocean, its waters hiding a world of aquatic wonders";
+                } else if (biomeName.equals("DEEP_COLD_OCEAN")) {
+                    yield "the deep cold ocean, a chilly expanse home to hardy marine creatures";
+                } else if (biomeName.equals("DEEP_FROZEN_OCEAN")) {
+                    yield "the deep frozen ocean, where icebergs float on the icy surface";
+                } else {
+                    yield "an uncharted realm, its secrets yet to be revealed";
+                }
+            }
         };
+    } catch (Exception e) {
+        // Fallback if the switch statement fails
+        plugin.debugLog("Error in biome switch for biome: " + biome.name() + ", error: " + e.getMessage());
+        return "an uncharted realm, its secrets yet to be revealed";
     }
-
+}
 
 }
 

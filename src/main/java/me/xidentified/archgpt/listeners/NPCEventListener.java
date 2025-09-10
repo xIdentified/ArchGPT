@@ -70,7 +70,7 @@ public class NPCEventListener implements Listener {
             String message = event.getMessage();
 
             Component playerMessageComponent = Component.text(message);
-            HologramManager hologramManager = new HologramManager(plugin);
+            HologramManager hologramManager = plugin.getHologramManager(); // Use plugin's instance
             long now = System.currentTimeMillis();
             long lastChatTimestamp = lastChatTimestamps.getOrDefault(playerUUID, 0L);
 
@@ -99,8 +99,11 @@ public class NPCEventListener implements Listener {
                 return;
             }
 
-            // Process the player's message
-            conversationManager.processPlayerMessage(player, playerMessageComponent, hologramManager);
+            // Schedule the message processing on the main thread
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                // Process the player's message on the main thread
+                conversationManager.processPlayerMessage(player, playerMessageComponent, hologramManager);
+            });
 
             lastChatTimestamps.put(playerUUID, now);
         }

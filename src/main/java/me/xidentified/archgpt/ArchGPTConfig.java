@@ -2,7 +2,7 @@ package me.xidentified.archgpt;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import main.java.me.xidentified.archgpt.context.ContextManager;
+import me.xidentified.archgpt.context.ContextManager;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -24,13 +24,16 @@ public class ArchGPTConfig {
     private long npcChatTimeoutMillis;
     private String defaultPrompt;
     private String chatGptEngine;
-    private String openAiApiKey;
     private Duration npcMemoryDuration;
     private int minCharLength;
     private int maxResponseLength;
     private long chatCooldownMillis;
     private boolean shouldSplitLongMsg;
     private ContextManager contextManager;
+    private String mcpServerUrl;
+    private String mcpProvider;
+    private String mcpModel;
+    private int mcpMaxTokens;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -52,17 +55,21 @@ public class ArchGPTConfig {
         String durationString = config.getString("npc_memory_duration", "7d");
         npcMemoryDuration = parseMinecraftDuration(durationString);
         shouldSplitLongMsg = config.getBoolean("split_long_messages", false);
+        
+        // MCP Configuration
+        mcpServerUrl = config.getString("mcp.server_url", "http://localhost:3000/query");
+        mcpProvider = config.getString("mcp.provider", "openai");
+        mcpModel = config.getString("mcp.model", "gpt-3.5-turbo");
+        mcpMaxTokens = config.getInt("mcp.max_tokens", 200);
 
         // Set the logger level based on debugMode
         Level loggerLevel = debugMode ? Level.INFO : Level.WARNING;
         logger.setLevel(loggerLevel);
 
-        // Check if the OpenAI API key is set in the configuration
-        this.openAiApiKey = config.getString("api_key", "YOUR_OPENAI_API_KEY");
-        if (this.openAiApiKey.equals("YOUR_OPENAI_API_KEY")) {
-            logger.severe("OpenAI API key is not set in the config.yml. Plugin will not function properly without it!");
-            throw new IllegalStateException("OpenAI API key is missing or invalid.");
-        }
+        // Note: API key is now handled by the MCP server, not the plugin
+        logger.info("MCP Server URL: " + mcpServerUrl);
+        logger.info("MCP Provider: " + mcpProvider);
+        logger.info("MCP Model: " + mcpModel);
     }
 
     public void saveDefaultConfig() {
