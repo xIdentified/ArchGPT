@@ -170,39 +170,44 @@ public class NPCConversationManager {
 
         // Process chat request
         List<JsonObject> conversationState = npcChatStatesCache.get(playerUUID);
-
-        JsonObject jsonRequest = new JsonObject();
-        JsonArray messages = new JsonArray();
-
-        // Add all messages from the current conversation
-        for (JsonObject messageJson : conversationState) {
-            messages.add(messageJson);
-        }
-
-        // Add the player's current message
-        JsonObject userMessageJson = new JsonObject();
         String playerMessageText = PlainTextComponentSerializer.plainText().serialize(playerMessage);
-        userMessageJson.addProperty("role", "user");
-        userMessageJson.addProperty("content", playerMessageText);
-        messages.add(userMessageJson);
 
         // Handle summary of past conversations if needed
         String conversationSummary = memoryContext.getConversationSummary(playerMessage, playerUUID, npc.getName());
         if (conversationSummary != null) {
-            JsonObject summaryJson = new JsonObject();
-            summaryJson.addProperty("role", "system");
-            summaryJson.addProperty("content", conversationSummary);
-            messages.add(summaryJson);
+            // Update context with conversation summary
+            plugin.getContextManager().updateContextElement(player, "conversation_summary", conversationSummary);
         }
 
-        // Set the 'model', 'messages', and 'max_tokens' fields in the request
-        jsonRequest.addProperty("model", configHandler.getChatGptEngine());
-        jsonRequest.add("messages", messages);
-        jsonRequest.addProperty("max_tokens", configHandler.getMaxResponseLength());
+        // Build MCP request using the new approach
+        JsonObject mcpRequest = chatRequestHandler.buildMCPRequest(
+            plugin.getContextManager().getOrganizedContext(player, npc, ChatRequestHandler.RequestType.CONVERSATION),
+            playerMessageText,
+            conversationState,
+            ChatRequestHandler.RequestType.CONVERSATION
+        );
 
         // Send the request and process the response
-        CompletableFuture<Object> future = getChatRequestHandler().processChatGPTRequest(player, jsonRequest, ChatRequestHandler.RequestType.CONVERSATION, playerMessage, conversationState);
+        CompletableFuture<Object> future = getChatRequestHandler().processMCPRequest(
+            player, npc, playerMessageText, 
+            ChatRequestHandler.RequestType.CONVERSATION, 
+            conversationState
+        );
+        
         processNpcResponse(future, player, npc, hologramManager);
+    }
+
+    private void displayHologramOverNPC(UUID playerUUID, NPC npc, HologramManager hologramManager) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (npc == null || !npc.isSpawned()) return;
+                hologramManager.removePlayerHologram(playerUUID);
+                Location npcLocation = npc.getEntity().getLocation();
+                hologramManager.createHologram(playerUUID, npcLocation.add(0, 1, 0), "...");
+                hologramManager.animateHologram();
+            }
+        }.runTask(plugin);
     }
 
     private void displayHologramOverNPC(UUID playerUUID, NPC npc, HologramManager hologramManager) {

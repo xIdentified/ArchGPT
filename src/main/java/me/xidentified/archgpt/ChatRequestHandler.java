@@ -1,6 +1,6 @@
 package me.xidentified.archgpt;
 
-
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.xidentified.archgpt.utils.ArchGPTConstants;
@@ -9,10 +9,10 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bukkit.entity.Player;
+
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -22,9 +22,11 @@ import java.util.concurrent.Semaphore;
 
 public class ChatRequestHandler {
     private final ArchGPT plugin;
+    private final ContextManager contextManager;
 
     public ChatRequestHandler(ArchGPT plugin) {
         this.plugin = plugin;
+        this.contextManager = new ContextManager(plugin);
     }
 
     public enum RequestType {
@@ -32,7 +34,8 @@ public class ChatRequestHandler {
         CONVERSATION
     }
 
-    public CompletableFuture<Object> processChatGPTRequest(Player player, JsonObject requestBody, RequestType requestType, Component playerMessageComponent, List<JsonObject> conversationState) {
+    public CompletableFuture<Object> processMCPRequest(Player player, NPC npc, String message, 
+                                                     RequestType requestType, List<JsonObject> conversationState) {
         UUID playerUUID = player.getUniqueId();
         plugin.playerSemaphores.putIfAbsent(playerUUID, new Semaphore(1));
 
@@ -42,30 +45,34 @@ public class ChatRequestHandler {
                 Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
                 semaphore.acquire();
 
-                HttpRequest request = buildHttpRequest(requestBody.toString());
-                plugin.debugLog("Request body sent to GPT: " + requestBody);
+                // Get organized context
+                JsonObject context = contextManager.getOrganizedContext(player, npc, requestType);
+                
+                // Build MCP request
+                JsonObject mcpRequest = buildMCPRequest(context, message, conversationState, requestType);
+                plugin.debugLog("MCP Request: " + mcpRequest.toString());
 
+                // Send to MCP server
+                HttpRequest request = buildMCPHttpRequest(mcpRequest.toString());
                 HttpResponse<String> response = plugin.getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+                
                 int statusCode = response.statusCode();
-                plugin.debugLog("Received response from ChatGPT API, Status Code: " + statusCode);
+                plugin.debugLog("Received response from MCP server, Status Code: " + statusCode);
 
                 if (statusCode == 200) {
                     String jsonResponse = response.body();
                     JsonObject responseObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
                     return extractAssistantResponseText(responseObject);
-                } else if (statusCode == 503) {
-                    plugin.getLogger().warning("ChatGPT API is currently unavailable. Please try again later.");
-                    return "Sorry, I am unable to respond right now. Please try again later.";
                 } else {
-                    plugin.getLogger().severe("ChatGPT API Error: Status Code " + statusCode + " - " + response.body());
-                    throw new RuntimeException("ChatGPT API Error: Status Code " + statusCode);
+                    plugin.getLogger().severe("MCP Server Error: Status Code " + statusCode + " - " + response.body());
+                    throw new RuntimeException("MCP Server Error: Status Code " + statusCode);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("Thread was interrupted: " + e.getMessage());
             } catch (IOException | RuntimeException e) {
-                plugin.getLogger().severe("ChatGPT API Request Failed: " + e.getMessage());
-                throw new RuntimeException("ChatGPT API Request Failed: " + e.getMessage());
+                plugin.getLogger().severe("MCP Request Failed: " + e.getMessage());
+                throw new RuntimeException("MCP Request Failed: " + e.getMessage());
             } finally {
                 // Ensure the semaphore is released for this player
                 Semaphore semaphore = plugin.playerSemaphores.get(playerUUID);
@@ -86,10 +93,10 @@ public class ChatRequestHandler {
             return CompletableFuture.completedFuture(assistantResponseText);
 
         }).exceptionally(ex -> {
-                    // Handle exceptions - log the error and end the conversation
-                    plugin.getLogger().severe("Error processing ChatGPT request: " + ex.getMessage());
-                    plugin.getConversationManager().endConversation(playerUUID);
-                    return null;
+            // Handle exceptions - log the error and end the conversation
+            plugin.getLogger().severe("Error processing MCP request: " + ex.getMessage());
+            plugin.getConversationManager().endConversation(playerUUID);
+            return null;
         }).thenApply(assistantResponseText -> {
             // Process the response and prepare final result
             String response = assistantResponseText.trim();
@@ -98,7 +105,7 @@ public class ChatRequestHandler {
                 return response;
             } else {
                 // Additional processing for non-greeting requests
-                String sanitizedPlayerMessage = PlainTextComponentSerializer.plainText().serialize(playerMessageComponent);
+                String sanitizedPlayerMessage = message;
 
                 if (conversationState.size() > ArchGPTConstants.MAX_CONVERSATION_STATE_SIZE * 2) {
                     conversationState.subList(0, 2).clear();
@@ -119,28 +126,53 @@ public class ChatRequestHandler {
         });
     }
 
-    private String extractAssistantResponseText(JsonObject responseObject) {
-        if (responseObject.has("choices") && !responseObject.getAsJsonArray("choices").isEmpty()) {
-            JsonObject choice = responseObject.getAsJsonArray("choices").get(0).getAsJsonObject();
-            if (choice.has("message") && choice.getAsJsonObject("message").has("content")) {
-                return choice.getAsJsonObject("message").get("content").getAsString().trim();
+    private JsonObject buildMCPRequest(JsonObject context, String message, 
+                                     List<JsonObject> conversationState, RequestType requestType) {
+        JsonObject mcpRequest = new JsonObject();
+        
+        // Add context
+        mcpRequest.add("context", context);
+        
+        // Add message
+        mcpRequest.addProperty("message", message);
+        
+        // Add conversation history if available
+        if (conversationState != null && !conversationState.isEmpty()) {
+            JsonArray history = new JsonArray();
+            for (JsonObject msg : conversationState) {
+                history.add(msg);
             }
+            mcpRequest.add("conversation_history", history);
         }
-        plugin.getLogger().warning("Invalid response structure from ChatGPT API");
-        plugin.debugLog("ChatGPT API response object: " + responseObject);
-        return "";
+        
+        // Add request type
+        mcpRequest.addProperty("request_type", requestType.name());
+        
+        // Add provider information from config
+        mcpRequest.addProperty("provider", plugin.getConfig().getString("mcp.provider", "openai"));
+        mcpRequest.addProperty("model", plugin.getConfig().getString("mcp.model", "gpt-3.5-turbo"));
+        mcpRequest.addProperty("max_tokens", plugin.getConfig().getInt("mcp.max_tokens", 200));
+        
+        return mcpRequest;
     }
 
-    private HttpRequest buildHttpRequest(String jsonRequestBody) {
-        String apiKey = plugin.getConfigHandler().getOpenAiApiKey();
-        URI uri = URI.create("https://api.openai.com/v1/chat/completions");
+    private String extractAssistantResponseText(JsonObject responseObject) {
+        if (responseObject.has("output")) {
+            return responseObject.get("output").getAsString().trim();
+        }
+        plugin.getLogger().warning("Invalid response structure from MCP server");
+        plugin.debugLog("MCP server response object: " + responseObject);
+        return "I'm having trouble processing that right now.";
+    }
+
+    private HttpRequest buildMCPHttpRequest(String jsonRequestBody) {
+        String mcpServerUrl = plugin.getConfig().getString("mcp.server_url", "http://localhost:3000/query");
+        URI uri = URI.create(mcpServerUrl);
 
         return HttpRequest.newBuilder()
                 .uri(uri)
-                .header("Authorization", "Bearer " + apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonRequestBody, StandardCharsets.UTF_8))
                 .build();
     }
-
 }

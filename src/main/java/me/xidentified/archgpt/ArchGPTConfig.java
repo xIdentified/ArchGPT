@@ -2,6 +2,8 @@ package me.xidentified.archgpt;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import main.java.me.xidentified.archgpt.context.ContextManager;
+
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -28,6 +30,7 @@ public class ArchGPTConfig {
     private int maxResponseLength;
     private long chatCooldownMillis;
     private boolean shouldSplitLongMsg;
+    private ContextManager contextManager;
 
     public ArchGPTConfig(JavaPlugin plugin) {
         this.plugin = plugin;

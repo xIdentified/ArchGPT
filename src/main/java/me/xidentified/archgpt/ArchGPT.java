@@ -6,6 +6,7 @@ import de.cubbossa.tinytranslations.Translator;
 import de.cubbossa.tinytranslations.persistent.YamlMessageStorage;
 import de.cubbossa.tinytranslations.persistent.YamlStyleStorage;
 import lombok.Getter;
+import main.java.me.xidentified.archgpt.context.ContextManager;
 import me.xidentified.archgpt.commands.AdminReportCommandExecutor;
 import me.xidentified.archgpt.commands.ArchGPTCommand;
 import me.xidentified.archgpt.commands.ReportTypeCommandExecutor;
@@ -75,9 +76,11 @@ public class ArchGPT extends JavaPlugin {
             }
 
             this.configHandler = new ArchGPTConfig(this);
+            this.contextManager = new ContextManager(this);
             this.hologramManager = new HologramManager(this);
             this.reportManager = new ReportManager(this);
             this.audiences = BukkitAudiences.create(this);
+            
 
             translations = TinyTranslationsBukkit.application(this);
             translations.setMessageStorage(new YamlMessageStorage(new File(getDataFolder(), "/lang/")));
@@ -210,6 +213,7 @@ public class ArchGPT extends JavaPlugin {
         HandlerList.unregisterAll();
 
         playerSemaphores.clear();
+        contextManager.clearAllContexts();
         conversationTokenCounters.clear();
         playerCooldowns.clear();
     }
