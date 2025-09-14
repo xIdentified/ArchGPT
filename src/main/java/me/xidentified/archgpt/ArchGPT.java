@@ -159,6 +159,7 @@ public class ArchGPT extends JavaPlugin {
 
             // Register bStats
             int pluginId = 20587;
+            @SuppressWarnings("unused")
             Metrics metrics = new Metrics(this, pluginId);
 
             // Notify the user that the plugin is enabled

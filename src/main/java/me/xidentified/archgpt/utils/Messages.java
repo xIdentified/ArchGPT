@@ -124,4 +124,28 @@ public class Messages {
             .withDefault("<prefix>Prompt for {npc:name} updated successfully.")
             .withPlaceholder("npc")
             .build();
+
+        public static final Message CHECKPROVIDER_CMD_USAGE = new MessageBuilder("archgpt.checkprovider.usage")
+                .withDefault("<prefix_negative>Usage: /archgpt checkprovider <provider|all>")
+                .build();
+
+        public static final Message CHECKPROVIDER_TESTING = new MessageBuilder("archgpt.checkprovider.testing")
+                .withDefault("<prefix>Testing provider: <yellow>{provider}</yellow>")
+                .withPlaceholder("provider")
+                .build();
+
+        public static final Message CHECKPROVIDER_SUCCESS = new MessageBuilder("archgpt.checkprovider.success")
+                .withDefault("<prefix>Provider <yellow>{provider}</yellow> working correctly")
+                .withPlaceholder("provider")
+                .build();
+
+        public static final Message CHECKPROVIDER_ERROR = new MessageBuilder("archgpt.checkprovider.error")
+                .withDefault("<prefix_negative>Provider <yellow>{provider}</yellow> failed: <gray>{error}</gray>")
+                .withPlaceholder("provider")
+                .withPlaceholder("error")
+                .build();
+
+        public static final Message CHECKPROVIDER_ALL_COMPLETE = new MessageBuilder("archgpt.checkprovider.all-complete")
+                .withDefault("<prefix>Completed testing all providers")
+                .build();
 }

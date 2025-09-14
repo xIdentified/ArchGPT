@@ -8,8 +8,6 @@ import me.xidentified.archgpt.context.ContextManager;
 import me.xidentified.archgpt.utils.ArchGPTConstants;
 import me.xidentified.archgpt.utils.LocaleUtils;
 import net.citizensnpcs.api.npc.NPC;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bukkit.entity.Player;
 
@@ -66,6 +64,10 @@ public class ChatRequestHandler {
                     // Build MCP request using the context gathered on the main thread
                     JsonObject mcpRequest = buildMCPRequest(context, message, conversationState, requestType);
                     plugin.debugLog("MCP Request: " + mcpRequest.toString());
+
+                    // Log the request for debugging
+                    plugin.debugLog("Sending request to MCP server with provider: " + 
+                    plugin.getConfigHandler().getMcpProvider() + ", model: " + plugin.getConfigHandler().getMcpModel());
 
                     // Send to MCP server
                     HttpRequest request = buildMCPHttpRequest(mcpRequest.toString());

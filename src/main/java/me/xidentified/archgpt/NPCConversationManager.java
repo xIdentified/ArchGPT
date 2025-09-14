@@ -1,6 +1,5 @@
 package me.xidentified.archgpt;
 
-import com.google.gson.JsonArray;
 import lombok.Getter;
 import me.xidentified.archgpt.context.MemoryContext;
 import me.xidentified.archgpt.storage.model.Conversation;

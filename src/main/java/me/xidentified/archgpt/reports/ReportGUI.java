@@ -37,7 +37,7 @@ public class ReportGUI implements InventoryHolder, Listener {
         int slotsPerPage = 45; // Assuming the last row is reserved for navigation
         this.totalPages = (int) Math.ceil((double) reports.size() / slotsPerPage);
         int size = Math.min(54, (slotsPerPage + 9)); // 54 is max inventory size with 9 slots for navigation
-        this.inventory = Bukkit.createInventory(this, size, "Reports");
+        this.inventory = Bukkit.createInventory(this, size, Component.text("Reports"));
     }
 
     public void openGUI(Player admin) {

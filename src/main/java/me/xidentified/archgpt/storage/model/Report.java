@@ -1,7 +1,6 @@
 package me.xidentified.archgpt.storage.model;
 
 import lombok.Getter;
-import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
